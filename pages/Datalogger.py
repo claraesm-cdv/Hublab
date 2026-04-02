@@ -7,9 +7,9 @@ import os
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_icon="🧪", layout="wide")
 
-# Ajuste de caminhos para funcionar dentro da pasta /pages
+# Caminhos de arquivos (ajustados para estrutura de subpastas)
 DB_FILE = "historico.csv"
-# Busca a logo na pasta raiz (um nível acima de /pages)
+# Busca a logo na pasta raiz do projeto
 LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
 # --- CONTROLE DE CRONÔMETRO ---
@@ -53,7 +53,6 @@ def excluir_registro_por_data(data_hora):
 # --- CLASSE PDF ---
 class PDF(FPDF):
     def header(self):
-        # Tenta carregar a logo apenas se o arquivo existir
         if os.path.exists(LOGO_PATH):
             self.image(LOGO_PATH, 10, 8, 33)
         self.set_font('Arial', 'B', 14)
@@ -89,7 +88,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
     
-    # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["OS"]), 0)
@@ -103,8 +101,7 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     if ligando == "Não":
         pdf.secao_titulo("2. STATUS DE INICIALIZAÇÃO")
         pdf.set_font('Arial', 'B', 12); pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 10, "EQUIPAMENTO DANIFICADO - NÃO INICIALIZA / NÃO LIGA", 0, 1, 'C')
-        pdf.ln(5)
+        pdf.cell(0, 10, "EQUIPAMENTO NÃO LIGA / NÃO INICIALIZA", 0, 1, 'C')
     else:
         pdf.secao_titulo("2. CHECKLIST DE HARDWARE E SINAIS")
         for grupo in ["Interface Visual", "Sinais e Comunicação", "Energia"]:
@@ -135,7 +132,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, f"Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
     
-    # Retorna os bytes do PDF (compatível com fpdf2)
     return pdf.output()
 
 # --- INTERFACE ---
@@ -194,14 +190,14 @@ with tab1:
                 st_anl = {}
                 cols_an = st.columns(3)
                 for i in range(1, 16):
-                    st_anl[f"ANL {i}"] = "OK" if cols_an[(i-1)%3].checkbox(f"ANL {i}", value=True, key=f"an{i}") else "FALHA"
+                    st_anl[f"ANL {i}"] = "OK" if cols_an[(i-1)%3].checkbox(f"ANL {i}", value=True, key=f"an_{i}") else "FALHA"
                 checklist_detalhado["Entradas Analógicas"] = st_anl
         with cio2:
             with st.expander("⚡ Frequência"):
                 st_frq = {}
                 cols_fr = st.columns(2)
                 for i in range(1, 11):
-                    st_frq[f"FREQ {i}"] = "OK" if cols_fr[(i-1)%2].checkbox(f"FREQ {i}", value=True, key=f"fr{i}") else "FALHA"
+                    st_frq[f"FREQ {i}"] = "OK" if cols_fr[(i-1)%2].checkbox(f"FREQ {i}", value=True, key=f"fr_{i}") else "FALHA"
                 checklist_detalhado["Entradas Frequência"] = st_frq
 
         st.subheader("3. Parecer")
@@ -216,12 +212,9 @@ with tab1:
 
     if ligando != "-":
         if st.button("🚀 FINALIZAR"):
-            erro = False
             if not os_in or not serial_in:
                 st.error("🚨 OS e Serial são obrigatórios!")
-                erro = True
-            
-            if not erro:
+            else:
                 agora = datetime.now()
                 duracao = agora - st.session_state.inicio_sessao
                 tempo_str = f"{duracao.seconds // 60:02d}:{duracao.seconds % 60:02d} min"
@@ -229,13 +222,14 @@ with tab1:
                 
                 salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
                 
-                fname = f"Relatorio_DL_{serial_in}.pdf"
+                # GERAÇÃO DO PDF
                 pdf_output = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
                 
-                # Força conversão para bytes se necessário (para fpdf antigo)
-                if isinstance(pdf_output, str):
-                    pdf_output = pdf_output.encode('latin-1')
+                # Conversão explícita para bytes para evitar erro no download_button
+                if not isinstance(pdf_output, bytes):
+                    pdf_output = bytes(pdf_output)
 
+                fname = f"Relatorio_DL_{serial_in}.pdf"
                 st.success(f"✅ Relatório Gerado!")
                 st.download_button(
                     label="📥 Baixar PDF",
