@@ -7,12 +7,9 @@ import os
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_icon="🧪", layout="wide")
 
-# Caminhos de arquivos (ajustados para estrutura de subpastas)
 DB_FILE = "historico.csv"
-# Busca a logo na pasta raiz do projeto
 LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
-# --- CONTROLE DE CRONÔMETRO ---
 if 'inicio_sessao' not in st.session_state:
     st.session_state.inicio_sessao = datetime.now()
 
@@ -88,6 +85,14 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
     
+    # --- DATA DO TESTE NO PDF ---
+    data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    pdf.set_font('Arial', 'I', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, f"Data da Inspeção: {data_hoje}", 0, 1, 'R')
+    pdf.ln(2)
+    
+    # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["OS"]), 0)
@@ -222,10 +227,9 @@ with tab1:
                 
                 salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
                 
-                # GERAÇÃO DO PDF
+                # GERAÇÃO DO PDF COM DATA
                 pdf_output = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
                 
-                # Conversão explícita para bytes para evitar erro no download_button
                 if not isinstance(pdf_output, bytes):
                     pdf_output = bytes(pdf_output)
 
