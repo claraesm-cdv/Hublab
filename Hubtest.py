@@ -74,14 +74,14 @@ with col1:
         st.info("Inspeção de hardware, sinais GSM/GPS e mapeamento de canais.")
         # IMPORTANTE: O nome dentro do switch_page deve ser o caminho do arquivo no GitHub
         if st.button("Acessar Avaliação DL", key="btn_dl"):
-            st.switch_page("page/Datalogger.py")
+            st.switch_page("pages/Datalogger.py")
 
 with col2:
     with st.container(border=True):
         st.markdown("### 🌬️ Windvane")
         st.info("Análise elétrica dinâmica/estática e integridade física.")
         if st.button("Acessar Avaliação WV", key="btn_wv"):
-            st.switch_page("page/Windvane.py")
+            st.switch_page("pages/Windvane.py")
 
 with col3:
     with st.container(border=True):
