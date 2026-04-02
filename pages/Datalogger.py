@@ -85,14 +85,13 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
     
-    # --- DATA DO TESTE NO PDF ---
+    # Data do teste dentro do arquivo
     data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 5, f"Data da Inspeção: {data_hoje}", 0, 1, 'R')
     pdf.ln(2)
     
-    # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["OS"]), 0)
@@ -227,13 +226,14 @@ with tab1:
                 
                 salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
                 
-                # GERAÇÃO DO PDF COM DATA
                 pdf_output = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
                 
                 if not isinstance(pdf_output, bytes):
                     pdf_output = bytes(pdf_output)
 
-                fname = f"Relatorio_DL_{serial_in}.pdf"
+                # NOMEAÇÃO CORRIGIDA: data_DL_serial
+                fname = f"{datetime.now().strftime('%d%m%y')}_DL_{serial_in}.pdf"
+                
                 st.success(f"✅ Relatório Gerado!")
                 st.download_button(
                     label="📥 Baixar PDF",
