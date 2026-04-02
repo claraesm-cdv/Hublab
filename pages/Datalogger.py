@@ -7,10 +7,11 @@ import os
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_icon="🧪", layout="wide")
 
+# Como o arquivo está em /pages, subimos um nível para salvar o CSV na raiz onde o Hub lê
 DB_FILE = "historico.csv"
 LOGO_PATH = "logo.png"
 
-# --- CONTROLE DE CRONÔMETRO (TEMPO DE TESTE - APENAS PARA BD) ---
+# --- CONTROLE DE CRONÔMETRO ---
 if 'inicio_sessao' not in st.session_state:
     st.session_state.inicio_sessao = datetime.now()
 
@@ -19,7 +20,7 @@ def salvar_no_historico(dados_id, parecer, ressalvas, checklist_detalhado, tempo
     data_geracao = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     novo_registro = {
         "Data do Teste": data_geracao,
-        "Duração do Teste": tempo_execucao, # Salva no CSV
+        "Duração do Teste": tempo_execucao,
         "OS": str(dados_id.get("OS", "")),
         "Serial": str(dados_id.get("Serial", "")),
         "Fabricante": str(dados_id.get("Fabricante", "")),
@@ -72,7 +73,6 @@ class PDF(FPDF):
         self.set_font('Arial', '', 8)
         self.set_text_color(60, 60, 60)
         self.cell(largura * 0.8, 5, f"  > {nome}", 0, 0, 'L')
-        
         status_positivos = ["OK", "Aprovado", "Cartao SD", "Cartao microSD"]
         if status in status_positivos:
             self.set_text_color(0, 120, 0)
@@ -86,8 +86,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf = PDF()
     pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
-    return pdf.output()
-
     
     # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
@@ -106,7 +104,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
         pdf.cell(0, 10, "EQUIPAMENTO DANIFICADO - NÃO INICIALIZA / NÃO LIGA", 0, 1, 'C')
         pdf.ln(5)
     else:
-        # 2. CHECKLIST GERAL
         pdf.secao_titulo("2. CHECKLIST DE HARDWARE E SINAIS")
         for grupo in ["Interface Visual", "Sinais e Comunicação", "Energia"]:
             if grupo in checklist_detalhado:
@@ -116,7 +113,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
                     pdf.linha_teste(nome, status)
                 pdf.ln(2)
 
-        # 3. CANAIS
         pdf.secao_titulo("3. MAPEAMENTO DE CANAIS DE ENTRADA")
         y_topo = pdf.get_y()
         pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Analógicas", 0, 1)
@@ -130,7 +126,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
             pdf.set_x(108); pdf.linha_teste(nome, status, 92)
         pdf.set_y(max(y_fim_anl, pdf.get_y()) + 4)
 
-    # 4. PARECER
     pdf.secao_titulo("4. PARECER FINAL")
     cor = (0, 120, 0) if parecer == "Aprovado" else (200, 0, 0)
     pdf.set_text_color(*cor); pdf.set_font('Arial', 'B', 12)
@@ -138,7 +133,7 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, f"Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
     
-    return bytes(pdf.output())
+    return pdf.output()
 
 # --- INTERFACE ---
 st.title("🧪 Laboratório CDV - Avaliação Datalogger")
@@ -168,44 +163,27 @@ with tab1:
 
     if ligando == "Sim":
         st.subheader("2. Inspeção Detalhada")
-        
         with st.expander("🖥️ Interface Visual", expanded=True):
             col_iv1, col_iv2, col_iv3 = st.columns(3)
             leds = col_iv1.selectbox("LEDs*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
             disp = col_iv2.selectbox("Display*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
             grav = col_iv3.selectbox("Gravação Interna*", ["-", "Cartao SD", "Cartao microSD"])
-            
-            checklist_detalhado["Interface Visual"] = {
-                "LEDs": "OK" if leds == "OK" else ("FALHA" if leds == "Não" else "-"),
-                "Display": "OK" if disp == "OK" else ("FALHA" if disp == "Não" else "-"),
-                "Gravação": grav
-            }
+            checklist_detalhado["Interface Visual"] = {"LEDs": leds, "Display": disp, "Gravação": grav}
 
         with st.expander("📡 Sinais e Comunicação"):
             cs1, cs2, cs3, cs4 = st.columns(4)
-            gsm = cs1.selectbox("GSM*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            gps = cs2.selectbox("GPS*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            moxa = cs3.selectbox("MOXA*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            rt = cs4.selectbox("Real Time*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            
-            checklist_detalhado["Sinais e Comunicação"] = {
-                "GSM": "OK" if gsm == "OK" else ("FALHA" if gsm == "Não" else "-"),
-                "GPS": "OK" if gps == "OK" else ("FALHA" if gps == "Não" else "-"),
-                "MOXA": "OK" if moxa == "OK" else ("FALHA" if moxa == "Não" else "-"),
-                "Real Time": "OK" if rt == "OK" else ("FALHA" if rt == "Não" else "-")
-            }
+            gsm = cs1.selectbox("GSM*", ["-", "OK", "Não"], key="gsm")
+            gps = cs2.selectbox("GPS*", ["-", "OK", "Não"], key="gps")
+            moxa = cs3.selectbox("MOXA*", ["-", "OK", "Não"], key="moxa")
+            rt = cs4.selectbox("Real Time*", ["-", "OK", "Não"], key="rt")
+            checklist_detalhado["Sinais e Comunicação"] = {"GSM": gsm, "GPS": gps, "MOXA": moxa, "Real Time": rt}
 
         with st.expander("🔌 Energia"):
             cv1, cv2, cv3 = st.columns(3)
-            v12 = cv1.selectbox("12V*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            v5 = cv2.selectbox("5V*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            v25 = cv3.selectbox("2,5V*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            
-            checklist_detalhado["Energia"] = {
-                "12V": "OK" if v12 == "OK" else ("FALHA" if v12 == "Não" else "-"),
-                "5V": "OK" if v5 == "OK" else ("FALHA" if v5 == "Não" else "-"),
-                "2.5V": "OK" if v25 == "OK" else ("FALHA" if v25 == "Não" else "-")
-            }
+            v12 = cv1.selectbox("12V*", ["-", "OK", "Não"], key="12v")
+            v5 = cv2.selectbox("5V*", ["-", "OK", "Não"], key="5v")
+            v25 = cv3.selectbox("2,5V*", ["-", "OK", "Não"], key="25v")
+            checklist_detalhado["Energia"] = {"12V": v12, "5V": v5, "2.5V": v25}
 
         cio1, cio2 = st.columns(2)
         with cio1:
@@ -240,48 +218,30 @@ with tab1:
                 st.error("🚨 OS e Serial são obrigatórios!")
                 erro = True
             
-            if ligando == "Sim":
-                flat_list = [v for g in checklist_detalhado.values() for v in g.values()]
-                if "-" in flat_list or parecer == "-":
-                    st.error("🚨 Preencha todos os campos da inspeção detalhada!")
-                    erro = True
-
             if not erro:
-                # Cálculo do tempo (mm:ss) apenas para o BD
                 agora = datetime.now()
                 duracao = agora - st.session_state.inicio_sessao
-                minutos, segundos = divmod(duracao.seconds, 60)
-                tempo_str = f"{minutos:02d}:{segundos:02d} min"
-
+                tempo_str = f"{duracao.seconds // 60:02d}:{duracao.seconds % 60:02d} min"
                 dados_pdf = {"OS": os_in, "Serial": serial_in, "Fabricante": fab_in, "Modelo": mod_in, "Responsável": resp_in, "Uso": f"{dias_calc} dias"}
                 
-                # Salva no histórico (CSV) incluindo o tempo
                 salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
                 
-                # Gera o PDF (o tempo não é passado para a função gerar_pdf)
                 fname = f"{datetime.now().strftime('%d%m%y')}_DL{serial_in}.pdf"
-                pdf_bytes = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
-                pdf_bytes = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
-    
-    # Garante que o conteúdo seja binário (bytes)
-                if isinstance(pdf_bytes, str):
-                pdf_bytes = pdf_bytes.encode('latin-1') # Fallback para versões antigas
-    
-                st.success(f"✅ Relatório Gerado!")
-                st.download_button("📥 Baixar PDF", pdf_bytes, fname, mime="application/pdf")
-             
+                pdf_output = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
                 
-                # Reseta o cronômetro para o próximo teste
+                st.success(f"✅ Relatório Gerado!")
+                st.download_button("📥 Baixar PDF", data=pdf_output, file_name=fname, mime="application/pdf")
                 st.session_state.inicio_sessao = datetime.now()
 
 with tab2:
     if os.path.exists(DB_FILE):
         df = pd.read_csv(DB_FILE)
         st.dataframe(df, use_container_width=True)
-        
         st.subheader("🗑️ Apagar Registro")
         op_del = df["Data do Teste"].tolist()
         sel_del = st.selectbox("Selecione pela Data/Hora:", options=op_del)
         if st.button("Confirmar Exclusão", type="primary"):
-            if excluir_registro_por_data(sel_del): st.rerun()
-    else: st.info("Sem dados.")
+            if excluir_registro_por_data(sel_del):
+                st.rerun()
+    else:
+        st.info("Sem dados.")
