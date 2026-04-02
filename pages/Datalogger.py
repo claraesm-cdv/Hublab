@@ -7,9 +7,9 @@ import os
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_icon="🧪", layout="wide")
 
-# Ajuste de caminhos para funcionar dentro da pasta /pages
+# O Hub lê da raiz, então mantemos o nome padrão
 DB_FILE = "historico.csv"
-# Busca a logo na pasta raiz (um nível acima de /pages)
+# Caminho robusto para a logo na raiz, mesmo rodando de dentro de /pages
 LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
 # --- CONTROLE DE CRONÔMETRO ---
@@ -42,18 +42,9 @@ def salvar_no_historico(dados_id, parecer, ressalvas, checklist_detalhado, tempo
         df_final = df_novo
     df_final.to_csv(DB_FILE, index=False, encoding='utf-8-sig')
 
-def excluir_registro_por_data(data_hora):
-    if os.path.exists(DB_FILE):
-        df = pd.read_csv(DB_FILE)
-        df = df[df['Data do Teste'] != data_hora]
-        df.to_csv(DB_FILE, index=False, encoding='utf-8-sig')
-        return True
-    return False
-
 # --- CLASSE PDF ---
 class PDF(FPDF):
     def header(self):
-        # Tenta carregar a logo apenas se o arquivo existir
         if os.path.exists(LOGO_PATH):
             self.image(LOGO_PATH, 10, 8, 33)
         self.set_font('Arial', 'B', 14)
@@ -89,7 +80,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
     
-    # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["OS"]), 0)
@@ -103,8 +93,7 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     if ligando == "Não":
         pdf.secao_titulo("2. STATUS DE INICIALIZAÇÃO")
         pdf.set_font('Arial', 'B', 12); pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 10, "EQUIPAMENTO DANIFICADO - NÃO INICIALIZA / NÃO LIGA", 0, 1, 'C')
-        pdf.ln(5)
+        pdf.cell(0, 10, "EQUIPAMENTO DANIFICADO - NÃO LIGA", 0, 1, 'C')
     else:
         pdf.secao_titulo("2. CHECKLIST DE HARDWARE E SINAIS")
         for grupo in ["Interface Visual", "Sinais e Comunicação", "Energia"]:
@@ -115,19 +104,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
                     pdf.linha_teste(nome, status)
                 pdf.ln(2)
 
-        pdf.secao_titulo("3. MAPEAMENTO DE CANAIS DE ENTRADA")
-        y_topo = pdf.get_y()
-        pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Analógicas", 0, 1)
-        for nome, status in checklist_detalhado.get("Entradas Analógicas", {}).items():
-            pdf.linha_teste(nome, status, 92)
-        y_fim_anl = pdf.get_y()
-        
-        pdf.set_xy(108, y_topo)
-        pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Frequência", 0, 1)
-        for nome, status in checklist_detalhado.get("Entradas Frequência", {}).items():
-            pdf.set_x(108); pdf.linha_teste(nome, status, 92)
-        pdf.set_y(max(y_fim_anl, pdf.get_y()) + 4)
-
     pdf.secao_titulo("4. PARECER FINAL")
     cor = (0, 120, 0) if parecer == "Aprovado" else (200, 0, 0)
     pdf.set_text_color(*cor); pdf.set_font('Arial', 'B', 12)
@@ -135,125 +111,58 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, f"Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
     
-    # Retorna os bytes do PDF (compatível com fpdf2)
+    # O output() da fpdf2 já retorna bytes por padrão
     return pdf.output()
 
 # --- INTERFACE ---
-st.title("🧪 Laboratório CDV - Avaliação Datalogger")
-tab1, tab2 = st.tabs(["📝 Novo Checklist", "📊 Banco de Dados"])
+st.title("🧪 Avaliação Datalogger")
+tab1, tab2 = st.tabs(["📝 Checklist", "📊 Histórico"])
 
 with tab1:
-    st.subheader("1. Identificação")
     c1, c2, c3 = st.columns(3)
     os_in = c1.text_input("OS*")
     serial_in = c1.text_input("Serial*")
     fab_in = c2.text_input("Fabricante*")
     mod_in = c2.text_input("Modelo*")
     resp_in = c3.text_input("Responsável*")
+    d_ini = c3.date_input("Entrada", value=datetime.now())
     
-    c_dat1, c_dat2 = c3.columns(2)
-    d_ini = c_dat1.date_input("Entrada", value=datetime.now())
-    d_fim = c_dat2.date_input("Saída", value=datetime.now())
-    dias_calc = (d_fim - d_ini).days
-    st.info(f"⏳ **Permanência:** {dias_calc} dias")
-
-    st.divider()
     ligando = st.radio("Equipamento liga?*", ["-", "Sim", "Não"], horizontal=True)
 
     checklist_detalhado = {}
-    parecer = "-"
-    ressalvas = ""
-
     if ligando == "Sim":
-        st.subheader("2. Inspeção Detalhada")
-        with st.expander("🖥️ Interface Visual", expanded=True):
-            col_iv1, col_iv2, col_iv3 = st.columns(3)
-            leds = col_iv1.selectbox("LEDs*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            disp = col_iv2.selectbox("Display*", ["-", "OK", "Não"], format_func=lambda x: "OK" if x=="OK" else ("FALHA" if x=="Não" else x))
-            grav = col_iv3.selectbox("Gravação Interna*", ["-", "Cartao SD", "Cartao microSD"])
-            checklist_detalhado["Interface Visual"] = {"LEDs": leds, "Display": disp, "Gravação": grav}
+        with st.expander("🔍 Detalhes do Hardware", expanded=True):
+            col_a, col_b = st.columns(2)
+            leds = col_a.selectbox("LEDs", ["-", "OK", "Não"])
+            disp = col_b.selectbox("Display", ["-", "OK", "Não"])
+            checklist_detalhado["Interface Visual"] = {"LEDs": leds, "Display": disp}
 
-        with st.expander("📡 Sinais e Comunicação"):
-            cs1, cs2, cs3, cs4 = st.columns(4)
-            gsm = cs1.selectbox("GSM*", ["-", "OK", "Não"], key="gsm")
-            gps = cs2.selectbox("GPS*", ["-", "OK", "Não"], key="gps")
-            moxa = cs3.selectbox("MOXA*", ["-", "OK", "Não"], key="moxa")
-            rt = cs4.selectbox("Real Time*", ["-", "OK", "Não"], key="rt")
-            checklist_detalhado["Sinais e Comunicação"] = {"GSM": gsm, "GPS": gps, "MOXA": moxa, "Real Time": rt}
-
-        with st.expander("🔌 Energia"):
-            cv1, cv2, cv3 = st.columns(3)
-            v12 = cv1.selectbox("12V*", ["-", "OK", "Não"], key="12v")
-            v5 = cv2.selectbox("5V*", ["-", "OK", "Não"], key="5v")
-            v25 = cv3.selectbox("2,5V*", ["-", "OK", "Não"], key="25v")
-            checklist_detalhado["Energia"] = {"12V": v12, "5V": v5, "2.5V": v25}
-
-        cio1, cio2 = st.columns(2)
-        with cio1:
-            with st.expander("🛠️ Analógicas"):
-                st_anl = {}
-                cols_an = st.columns(3)
-                for i in range(1, 16):
-                    st_anl[f"ANL {i}"] = "OK" if cols_an[(i-1)%3].checkbox(f"ANL {i}", value=True, key=f"an{i}") else "FALHA"
-                checklist_detalhado["Entradas Analógicas"] = st_anl
-        with cio2:
-            with st.expander("⚡ Frequência"):
-                st_frq = {}
-                cols_fr = st.columns(2)
-                for i in range(1, 11):
-                    st_frq[f"FREQ {i}"] = "OK" if cols_fr[(i-1)%2].checkbox(f"FREQ {i}", value=True, key=f"fr{i}") else "FALHA"
-                checklist_detalhado["Entradas Frequência"] = st_frq
-
-        st.subheader("3. Parecer")
-        parecer = st.selectbox("Resultado Final*", ["-", "Aprovado", "Reprovado", "Aprovado com Ressalvas"])
+        st.subheader("Resultado")
+        parecer = st.selectbox("Parecer*", ["-", "Aprovado", "Reprovado"])
         ressalvas = st.text_area("Observações")
 
-    elif ligando == "Não":
-        st.error("⚠️ Equipamento não inicializa.")
-        parecer = "Reprovado"
-        ressalvas = st.text_area("Observações Adicionais", value="Equipamento danificado e não inicializa.")
-        checklist_detalhado = {"Status": {"Geral": "FALHA"}}
-
-    if ligando != "-":
         if st.button("🚀 FINALIZAR"):
-            erro = False
-            if not os_in or not serial_in:
-                st.error("🚨 OS e Serial são obrigatórios!")
-                erro = True
-            
-            if not erro:
+            if not os_in or not serial_in or parecer == "-":
+                st.error("Preencha os campos obrigatórios!")
+            else:
                 agora = datetime.now()
                 duracao = agora - st.session_state.inicio_sessao
-                tempo_str = f"{duracao.seconds // 60:02d}:{duracao.seconds % 60:02d} min"
-                dados_pdf = {"OS": os_in, "Serial": serial_in, "Fabricante": fab_in, "Modelo": mod_in, "Responsável": resp_in, "Uso": f"{dias_calc} dias"}
+                tempo_str = f"{duracao.seconds // 60} min"
                 
+                dados_pdf = {"OS": os_in, "Serial": serial_in, "Fabricante": fab_in, "Modelo": mod_in, "Responsável": resp_in, "Uso": "N/A"}
                 salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
                 
-                fname = f"Relatorio_DL_{serial_in}.pdf"
+                # Gerar PDF e garantir que seja BYTES
                 pdf_output = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
-                
-                # Força conversão para bytes se necessário (para fpdf antigo)
-                if isinstance(pdf_output, str):
-                    pdf_output = pdf_output.encode('latin-1')
+                if not isinstance(pdf_output, bytes):
+                    pdf_output = bytes(pdf_output)
 
-                st.success(f"✅ Relatório Gerado!")
-                st.download_button(
-                    label="📥 Baixar PDF",
-                    data=pdf_output,
-                    file_name=fname,
-                    mime="application/pdf"
-                )
-                st.session_state.inicio_sessao = datetime.now()
+                st.success("✅ Sucesso!")
+                st.download_button("📥 Baixar PDF", data=pdf_output, file_name=f"Relatorio_{serial_in}.pdf", mime="application/pdf")
 
 with tab2:
     if os.path.exists(DB_FILE):
         df = pd.read_csv(DB_FILE)
-        st.dataframe(df, use_container_width=True)
-        st.subheader("🗑️ Apagar Registro")
-        op_del = df["Data do Teste"].tolist()
-        sel_del = st.selectbox("Selecione pela Data/Hora:", options=op_del)
-        if st.button("Confirmar Exclusão", type="primary"):
-            if excluir_registro_por_data(sel_del):
-                st.rerun()
+        st.dataframe(df)
     else:
-        st.info("Sem dados.")
+        st.info("Aguardando primeiro registro...")
