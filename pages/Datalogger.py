@@ -7,9 +7,10 @@ import os
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_icon="🧪", layout="wide")
 
-# Como o arquivo está em /pages, subimos um nível para salvar o CSV na raiz onde o Hub lê
+# Ajuste de caminhos para funcionar dentro da pasta /pages
 DB_FILE = "historico.csv"
-LOGO_PATH = "logo.png"
+# Busca a logo na pasta raiz (um nível acima de /pages)
+LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
 # --- CONTROLE DE CRONÔMETRO ---
 if 'inicio_sessao' not in st.session_state:
@@ -52,6 +53,7 @@ def excluir_registro_por_data(data_hora):
 # --- CLASSE PDF ---
 class PDF(FPDF):
     def header(self):
+        # Tenta carregar a logo apenas se o arquivo existir
         if os.path.exists(LOGO_PATH):
             self.image(LOGO_PATH, 10, 8, 33)
         self.set_font('Arial', 'B', 14)
@@ -133,6 +135,7 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, f"Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
     
+    # Retorna os bytes do PDF (compatível com fpdf2)
     return pdf.output()
 
 # --- INTERFACE ---
@@ -191,14 +194,14 @@ with tab1:
                 st_anl = {}
                 cols_an = st.columns(3)
                 for i in range(1, 16):
-                    st_anl[f"ANL {i}"] = "OK" if cols_an[(i-1)%3].checkbox(f"ANL {i}", value=True) else "FALHA"
+                    st_anl[f"ANL {i}"] = "OK" if cols_an[(i-1)%3].checkbox(f"ANL {i}", value=True, key=f"an{i}") else "FALHA"
                 checklist_detalhado["Entradas Analógicas"] = st_anl
         with cio2:
             with st.expander("⚡ Frequência"):
                 st_frq = {}
                 cols_fr = st.columns(2)
                 for i in range(1, 11):
-                    st_frq[f"FREQ {i}"] = "OK" if cols_fr[(i-1)%2].checkbox(f"FREQ {i}", value=True) else "FALHA"
+                    st_frq[f"FREQ {i}"] = "OK" if cols_fr[(i-1)%2].checkbox(f"FREQ {i}", value=True, key=f"fr{i}") else "FALHA"
                 checklist_detalhado["Entradas Frequência"] = st_frq
 
         st.subheader("3. Parecer")
@@ -226,11 +229,20 @@ with tab1:
                 
                 salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
                 
-                fname = f"{datetime.now().strftime('%d%m%y')}_DL{serial_in}.pdf"
+                fname = f"Relatorio_DL_{serial_in}.pdf"
                 pdf_output = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
                 
+                # Força conversão para bytes se necessário (para fpdf antigo)
+                if isinstance(pdf_output, str):
+                    pdf_output = pdf_output.encode('latin-1')
+
                 st.success(f"✅ Relatório Gerado!")
-                st.download_button("📥 Baixar PDF", data=pdf_output, file_name=fname, mime="application/pdf")
+                st.download_button(
+                    label="📥 Baixar PDF",
+                    data=pdf_output,
+                    file_name=fname,
+                    mime="application/pdf"
+                )
                 st.session_state.inicio_sessao = datetime.now()
 
 with tab2:
