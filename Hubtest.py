@@ -5,13 +5,12 @@ import os
 # 1. Configuração da Página
 st.set_page_config(page_title="Hub Laboratório CDV", layout="wide", page_icon="🔬")
 
-# 2. Estilização CSS (Melhoria visual dos botões e métricas)
+# 2. Estilização CSS
 st.markdown("""
     <style>
     div[data-testid="stMetricValue"] { font-size: 28px; color: #006b80; }
     div[data-testid="stMetricLabel"] { font-weight: bold; }
     
-    /* Estilizando os botões para parecerem Cards */
     .stButton button {
         background-color: #006b80 !important;
         color: white !important;
@@ -29,9 +28,10 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. Lógica de Leitura de Dados (Sincronizada)
+# 3. Lógica de Dados e Cálculos
+VALOR_UNITARIO = 13720.96
+
 def carregar_dados():
-    # Como agora estão na mesma máquina, o Hub lê o arquivo que o DL cria
     db_file = "historico.csv"
     if os.path.exists(db_file):
         try:
@@ -41,65 +41,49 @@ def carregar_dados():
     return pd.DataFrame()
 
 df_historico = carregar_dados()
-
-# Contabilização por equipamento (Baseado na coluna 'Equipamento' ou 'Modelo')
 total_dl = len(df_historico) if not df_historico.empty else 0
-# Você pode filtrar se tiver uma coluna identificando o tipo:
-# total_dl = len(df_historico[df_historico['Equipamento'] == 'Datalogger'])
+economia_total = total_dl * VALOR_UNITARIO
 
 # 4. Interface Principal
 header_left, header_right = st.columns([8, 2])
 with header_left:
     st.title("🔬 Hub de Testes Laboratoriais - CDV")
-    st.markdown("### Painel de Controle e Gestão de Equipamentos")
+    st.markdown("### Gestão de Ativos e Impacto Financeiro")
 with header_right:
     if st.button("🔄 Atualizar Dados"):
         st.rerun()
 
-# Linha de Métricas
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("Total Geral", total_dl)
-m2.metric("Dataloggers", f"{total_dl} un")
-m3.metric("Windvanes", "0 un")
-m4.metric("Termohigrômetros", "0 un")
+# 5. Painel de Métricas (Economia e Volume)
+st.markdown("---")
+col_metrics_1, col_metrics_2 = st.columns(2)
 
+with col_metrics_1:
+    # Formatação brasileira de moeda (R$ 1.000,00)
+    valor_formatado = f"R$ {economia_total:,.2f}".replace(",", "v").replace(".", ",").replace("v", ".")
+    st.metric("Economia Total Gerada", valor_formatado, help="Soma do valor de mercado de todos os Dataloggers testados/recuperados.")
+
+with col_metrics_2:
+    st.metric("Dataloggers Avaliados", f"{total_dl} unidades")
+
+st.info(f"💡 **Indicador de Valor:** Cada Datalogger evitado de nova compra representa uma economia de **R$ 13.720,96**.")
+
+# 6. Acesso ao Aplicativo
 st.divider()
-
-# 5. Grid de Acesso aos Aplicativos
-col1, col2, col3 = st.columns(3)
-
-with col1:
+c1, c2, c3 = st.columns([1, 2, 1])
+with c2:
     with st.container(border=True):
         st.markdown("### 📊 Datalogger")
-        st.info("Inspeção de hardware, sinais GSM/GPS e mapeamento de canais.")
-        # IMPORTANTE: O nome dentro do switch_page deve ser o caminho do arquivo no GitHub
+        st.write("Iniciar nova inspeção de hardware e sinais.")
         if st.button("Acessar Avaliação DL", key="btn_dl"):
             st.switch_page("pages/Datalogger.py")
 
-with col2:
-    with st.container(border=True):
-        st.markdown("### 🌬️ Windvane")
-        st.info("Análise elétrica dinâmica/estática e integridade física.")
-        if st.button("Acessar Avaliação WV", key="btn_wv"):
-            st.switch_page("pages/Windvane.py")
-
-with col3:
-    with st.container(border=True):
-        st.markdown("### 🌡️ Termohigrômetro")
-        st.info("Monitoramento de calibração, temperatura e umidade.")
-        if st.button("Acessar Avaliação Termo", key="btn_th"):
-            # Substitua pelo nome do arquivo quando criar
-            st.warning("Página em desenvolvimento")
-
+# 7. Tabela de Resumo
 st.divider()
-
-# 6. Tabela de Resumo (Últimos Testes)
 if not df_historico.empty:
-    with st.expander("📊 Visualizar Últimos testes de Datalogger", expanded=True):
-        # Seleciona apenas as colunas principais para não poluir o visual
+    with st.expander("📊 Histórico Recente de Dataloggers", expanded=True):
         colunas_exibir = ['Data do Teste', 'OS', 'Serial', 'Parecer']
-        # Filtra apenas colunas que realmente existem no seu CSV
         colunas_disponiveis = [c for c in colunas_exibir if c in df_historico.columns]
-        st.dataframe(df_historico[colunas_disponiveis].tail(10), use_container_width=True)
+        # Mostra os 10 mais recentes (do fim para o começo)
+        st.dataframe(df_historico[colunas_disponiveis].iloc[::-1].head(10), use_container_width=True)
 else:
-    st.info("Nenhum registro encontrado no arquivo 'historico.csv'.")
+    st.info("Aguardando registros no arquivo 'historico.csv' para calcular impacto.")
