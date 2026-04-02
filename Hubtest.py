@@ -2,93 +2,104 @@ import streamlit as st
 import pandas as pd
 import os
 
-# Configurações de Design
+# 1. Configuração da Página
 st.set_page_config(page_title="Hub Laboratório CDV", layout="wide", page_icon="🔬")
 
-# Estilização Profissional
+# 2. Estilização CSS (Melhoria visual dos botões e métricas)
 st.markdown("""
     <style>
     div[data-testid="stMetricValue"] { font-size: 28px; color: #006b80; }
     div[data-testid="stMetricLabel"] { font-weight: bold; }
-    .stLinkButton a {
+    
+    /* Estilizando os botões para parecerem Cards */
+    .stButton button {
         background-color: #006b80 !important;
+        color: white !important;
         border-radius: 10px !important;
+        height: 60px !important;
+        width: 100% !important;
+        font-weight: bold !important;
+        border: none !important;
         transition: 0.3s;
-        text-align: center;
     }
-    .stLinkButton a:hover {
+    .stButton button:hover {
         background-color: #00b4b4 !important;
         transform: scale(1.02);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE CONTABILIZAÇÃO ---
-# @st.cache_data(ttl=60) # Opcional: atualiza a cada 60 segundos automaticamente
-def buscar_dados():
-    db_dl = "historico.csv" 
-    if os.path.exists(db_dl):
+# 3. Lógica de Leitura de Dados (Sincronizada)
+def carregar_dados():
+    # Como agora estão na mesma máquina, o Hub lê o arquivo que o DL cria
+    db_file = "historico.csv"
+    if os.path.exists(db_file):
         try:
-            # use_cols evita carregar o arquivo inteiro na memória se for muito grande
-            df = pd.read_csv(db_dl, encoding='utf-8-sig')
-            return df
-        except Exception as e:
-            st.error(f"Erro ao ler banco de dados: {e}")
+            return pd.read_csv(db_file, encoding='utf-8-sig')
+        except:
             return pd.DataFrame()
     return pd.DataFrame()
 
-# Carregar dados
-df_historico = buscar_dados()
-total_dl = len(df_historico) if not df_historico.empty else 0
+df_historico = carregar_dados()
 
-# --- INTERFACE ---
-header_col, refresh_col = st.columns([9, 1])
-with header_col:
+# Contabilização por equipamento (Baseado na coluna 'Equipamento' ou 'Modelo')
+total_dl = len(df_historico) if not df_historico.empty else 0
+# Você pode filtrar se tiver uma coluna identificando o tipo:
+# total_dl = len(df_historico[df_historico['Equipamento'] == 'Datalogger'])
+
+# 4. Interface Principal
+header_left, header_right = st.columns([8, 2])
+with header_left:
     st.title("🔬 Hub de Testes Laboratoriais - CDV")
-    st.markdown("### Monitoramento em Tempo Real")
-with refresh_col:
-    if st.button("🔄"): # Botão rápido para atualizar os números
+    st.markdown("### Painel de Controle e Gestão de Equipamentos")
+with header_right:
+    if st.button("🔄 Atualizar Dados"):
         st.rerun()
 
 # Linha de Métricas
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Total Geral", total_dl) 
+m1.metric("Total Geral", total_dl)
 m2.metric("Dataloggers", f"{total_dl} un")
 m3.metric("Windvanes", "0 un")
 m4.metric("Termohigrômetros", "0 un")
 
 st.divider()
 
-# Grid de Aplicativos (Cards)
+# 5. Grid de Acesso aos Aplicativos
 col1, col2, col3 = st.columns(3)
 
 with col1:
     with st.container(border=True):
         st.markdown("### 📊 Datalogger")
-        st.write("Inspeção de hardware e sinais.")
-        st.link_button("Abrir Avaliação DL", "https://testedatalogger.streamlit.app/", use_container_width=True)
+        st.info("Inspeção de hardware, sinais GSM/GPS e mapeamento de canais.")
+        # IMPORTANTE: O nome dentro do switch_page deve ser o caminho do arquivo no GitHub
+        if st.button("Acessar Avaliação DL", key="btn_dl"):
+            st.switch_page("pages/Datalogger.py")
 
 with col2:
     with st.container(border=True):
         st.markdown("### 🌬️ Windvane")
-        st.write("Análise elétrica e física.")
-        st.link_button("Abrir Avaliação WV", "https://windvane-j4smexlhjh7ahgmmda5wiu.streamlit.app/", use_container_width=True)
+        st.info("Análise elétrica dinâmica/estática e integridade física.")
+        if st.button("Acessar Avaliação WV", key="btn_wv"):
+            st.switch_page("pages/Windvane.py")
 
 with col3:
     with st.container(border=True):
         st.markdown("### 🌡️ Termohigrômetro")
-        st.write("Temperatura e umidade.")
-        st.link_button("Abrir Avaliação Termo", "#", use_container_width=True)
+        st.info("Monitoramento de calibração, temperatura e umidade.")
+        if st.button("Acessar Avaliação Termo", key="btn_th"):
+            # Substitua pelo nome do arquivo quando criar
+            st.warning("Página em desenvolvimento")
 
 st.divider()
 
-# Tabela de Resumo Rápido
+# 6. Tabela de Resumo (Últimos Testes)
 if not df_historico.empty:
-    with st.expander("📄 Ver últimos registros do Datalogger", expanded=True):
-        # Mostra apenas colunas essenciais e os últimos 5
-        cols_viz = ['Data do Teste', 'OS', 'Serial', 'Parecer']
-        # Filtra apenas se as colunas existirem no seu CSV
-        cols_presentes = [c for c in cols_viz if c in df_historico.columns]
-        st.table(df_historico[cols_presentes].tail(5))
+    with st.expander("📄 Visualizar Últimos Registros (Datalogger)", expanded=True):
+        # Seleciona apenas as colunas principais para não poluir o visual
+        colunas_exibir = ['Data do Teste', 'OS', 'Serial', 'Parecer']
+        # Filtra apenas colunas que realmente existem no seu CSV
+        colunas_disponiveis = [c for c in colunas_exibir if c in df_historico.columns]
+        st.dataframe(df_historico[colunas_disponiveis].tail(10), use_container_width=True)
 else:
-    st.info("Nenhum dado de Datalogger encontrado no arquivo 'historico.csv'.")
+    st.info("Nenhum registro encontrado no arquivo 'historico.csv'.")
