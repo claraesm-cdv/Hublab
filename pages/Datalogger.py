@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta # Importado timedelta
+from datetime import datetime, timedelta
 from fpdf import FPDF
 import os
 
@@ -14,13 +14,11 @@ st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_
 DB_FILE = "historico.csv"
 LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
-# Início da sessão com horário corrigido
 if 'inicio_sessao' not in st.session_state:
     st.session_state.inicio_sessao = get_br_now()
 
 # --- FUNÇÕES DE BANCO DE DADOS ---
 def salvar_no_historico(dados_id, parecer, ressalvas, checklist_detalhado, tempo_execucao):
-    # Data para o CSV corrigida
     data_geracao = get_br_now().strftime("%d/%m/%Y %H:%M:%S")
     novo_registro = {
         "Data do Teste": data_geracao,
@@ -91,13 +89,14 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
     
-    # Data corrigida dentro do PDF
+    # Data corrigida (Brasília)
     data_hoje = get_br_now().strftime("%d/%m/%Y %H:%M:%S")
     pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 5, f"Data da Inspeção: {data_hoje}", 0, 1, 'R')
     pdf.ln(2)
     
+    # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["OS"]), 0)
@@ -113,6 +112,7 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
         pdf.set_font('Arial', 'B', 12); pdf.set_text_color(200, 0, 0)
         pdf.cell(0, 10, "EQUIPAMENTO NÃO LIGA / NÃO INICIALIZA", 0, 1, 'C')
     else:
+        # 2. CHECKLIST GERAL
         pdf.secao_titulo("2. CHECKLIST DE HARDWARE E SINAIS")
         for grupo in ["Interface Visual", "Sinais e Comunicação", "Energia"]:
             if grupo in checklist_detalhado:
@@ -122,6 +122,25 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
                     pdf.linha_teste(nome, status)
                 pdf.ln(2)
 
+        # 3. MAPEAMENTO DE CANAIS (Restaurado)
+        pdf.secao_titulo("3. MAPEAMENTO DE CANAIS DE ENTRADA")
+        y_topo = pdf.get_y()
+        
+        # Coluna Analógicas
+        pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Analógicas", 0, 1)
+        for nome, status in checklist_detalhado.get("Entradas Analógicas", {}).items():
+            pdf.linha_teste(nome, status, 92)
+        y_fim_anl = pdf.get_y()
+        
+        # Coluna Frequência
+        pdf.set_xy(108, y_topo)
+        pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Frequência", 0, 1)
+        for nome, status in checklist_detalhado.get("Entradas Frequência", {}).items():
+            pdf.set_x(108)
+            pdf.linha_teste(nome, status, 92)
+        pdf.set_y(max(y_fim_anl, pdf.get_y()) + 4)
+
+    # 4. PARECER
     pdf.secao_titulo("4. PARECER FINAL")
     cor = (0, 120, 0) if parecer == "Aprovado" else (200, 0, 0)
     pdf.set_text_color(*cor); pdf.set_font('Arial', 'B', 12)
@@ -144,10 +163,10 @@ with tab1:
     mod_in = c2.text_input("Modelo*")
     resp_in = c3.text_input("Responsável*")
     
-    # Datas de entrada/saída (essas o usuário escolhe, então mantemos padrão)
-    d_ini = c3.date_input("Entrada", value=get_br_now())
-    d_fim = datetime.now().date() # apenas para cálculo de dias
-    dias_calc = (datetime.now().date() - d_ini).days
+    c_dat1, c_dat2 = c3.columns(2)
+    d_ini = c_dat1.date_input("Entrada", value=get_br_now())
+    d_fim = c_dat2.date_input("Saída", value=get_br_now())
+    dias_calc = (d_fim - d_ini).days
     st.info(f"⏳ **Permanência:** {dias_calc} dias")
 
     st.divider()
@@ -224,7 +243,6 @@ with tab1:
                 if not isinstance(pdf_output, bytes):
                     pdf_output = bytes(pdf_output)
 
-                # NOMEAÇÃO CORRIGIDA COM HORA DO BRASIL: data_DL_serial
                 fname = f"{agora_br.strftime('%d%m%y')}_DL_{serial_in}.pdf"
                 
                 st.success(f"✅ Relatório Gerado!")
