@@ -86,6 +86,8 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf = PDF()
     pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
+    return pdf.output()
+
     
     # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
@@ -259,9 +261,15 @@ with tab1:
                 # Gera o PDF (o tempo não é passado para a função gerar_pdf)
                 fname = f"{datetime.now().strftime('%d%m%y')}_DL{serial_in}.pdf"
                 pdf_bytes = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
-                
-                st.success(f"✅ Relatório Gerado com Sucesso!")
+                pdf_bytes = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
+    
+    # Garante que o conteúdo seja binário (bytes)
+                if isinstance(pdf_bytes, str):
+                pdf_bytes = pdf_bytes.encode('latin-1') # Fallback para versões antigas
+    
+                st.success(f"✅ Relatório Gerado!")
                 st.download_button("📥 Baixar PDF", pdf_bytes, fname, mime="application/pdf")
+             
                 
                 # Reseta o cronômetro para o próximo teste
                 st.session_state.inicio_sessao = datetime.now()
