@@ -95,7 +95,7 @@ st.divider()
 
 # 6. Tabela de Resumo (Últimos Testes)
 if not df_historico.empty:
-    with st.expander("📄 Visualizar Últimos Registros (Datalogger)", expanded=True):
+    with st.expander("📊 Visualizar Últimos testes de Datalogger", expanded=True):
         # Seleciona apenas as colunas principais para não poluir o visual
         colunas_exibir = ['Data do Teste', 'OS', 'Serial', 'Parecer']
         # Filtra apenas colunas que realmente existem no seu CSV
