@@ -73,26 +73,46 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 4. Miolo Central
-col_esq, col_central, col_dir = st.columns([1, 1.3, 1])
+col_esq, col_central, col_dir = st.columns([0.5, 2, 0.5]) # Ajustei a proporção para caber os dois
 
 with col_central:
-    st.markdown("""
-        <div class="app-card">
-            <span style='font-size: 50px;'>📡</span>
-            <h2 style='color: #333; margin-top: 15px;'>Datalogger</h2>
-            <p style='color: #666;'>Acesse o ambiente de inspeção e pareceres técnicos.</p>
-        </div>
-        <br>
-    """, unsafe_allow_html=True)
-    
-    # O PONTO CHAVE: O caminho deve ser relativo ao diretório raiz do projeto
-    if st.button("🚀 INICIAR OPERAÇÃO"):
-        try:
-            # O Streamlit procura automaticamente na pasta /pages
-            st.switch_page("pages/Datalogger.py")
-        except Exception as e:
-            st.error("ERRO: O arquivo 'Datalogger.py' não foi encontrado na pasta 'pages'.")
-            st.info("Verifique se a estrutura no seu repositório está: Hublab/pages/Datalogger.py")
+    # Criando duas colunas internas para os cards ficarem lado a lado
+    c1, c2 = st.columns(2)
 
+    # --- CARD DATALOGGER ---
+    with c1:
+        st.markdown("""
+            <div class="app-card">
+                <span style='font-size: 50px;'>📊</span>
+                <h2 style='color: #333; margin-top: 15px;'>Datalogger</h2>
+                <p style='color: #666;'>Inspeção de canais, sensores e telemetria.</p>
+            </div>
+            <br>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🚀 ABRIR DATALOGGER"):
+            try:
+                st.switch_page("pages/Datalogger.py")
+            except Exception:
+                st.error("Arquivo 'pages/Datalogger.py' não encontrado.")
+
+    # --- CARD MODEM BGAN ---
+    with c2:
+        st.markdown("""
+            <div class="app-card">
+                <span style='font-size: 50px;'>📡</span>
+                <h2 style='color: #333; margin-top: 15px;'>Modem BGAN</h2>
+                <p style='color: #666;'>Teste de apontamento, sinal C/No e registro IP.</p>
+            </div>
+            <br>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🛰️ ABRIR BGAN"):
+            try:
+                # O Streamlit mudará para o arquivo BGAN.py na pasta pages
+                st.switch_page("pages/BGAN.py")
+            except Exception:
+                st.error("Arquivo 'pages/BGAN.py' não encontrado.")
+                st.info("Crie o arquivo BGAN.py dentro da pasta 'pages'.")
 # 5. Rodapé
 st.markdown("<br><br><p style='text-align: center; color: #888;'>© 2026 Laboratório CDV</p>", unsafe_allow_html=True)
