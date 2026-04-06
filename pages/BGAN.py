@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from fpdf import FPDF
 import os
 
-# --- AJUSTE DE FUSO HORÁRIO ---
+# --- AJUSTE DE FUSO HORÁRIO (Brasília) ---
 def get_br_now():
     tz_br = timezone(timedelta(hours=-3))
     return datetime.now(tz_br)
@@ -24,9 +24,9 @@ class PDF_BGAN(FPDF):
         if os.path.exists(LOGO_PATH):
             self.image(LOGO_PATH, 10, 8, 33)
         self.set_font('Arial', 'B', 14)
-        self.set_text_color(0, 107, 128) 
+        self.set_text_color(0, 107, 128) # Azul Petróleo
         self.cell(190, 10, 'RELATÓRIO DE AVALIAÇÃO TÉCNICA - BGAN', 0, 1, 'R')
-        self.set_draw_color(0, 180, 180)
+        self.set_draw_color(0, 180, 180) # Linha Turquesa
         self.line(10, 25, 200, 25)
         self.ln(12)
 
@@ -42,13 +42,15 @@ class PDF_BGAN(FPDF):
         self.set_font('Arial', '', 8)
         self.set_text_color(60, 60, 60)
         self.cell(largura * 0.75, 5, f"  > {nome}", 0, 0, 'L')
+        
         status_ok = ["OK", "Registrado", "Ativo", "Aprovado", "Sim"]
         color = (0, 120, 0) if any(x in str(status) for x in status_ok) else (200, 0, 0)
+        
         self.set_text_color(*color)
         self.cell(largura * 0.25, 5, f"[ {status} ]", 0, 1, 'R')
         self.set_text_color(0, 0, 0)
 
-# --- INTERFACE ---
+# --- INTERFACE STREAMLIT ---
 st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
 
 tab1, tab2 = st.tabs(["📝 Teste de Campo/Bancada", "📊 Histórico"])
@@ -90,23 +92,26 @@ with tab1:
     c_res2.metric("Tempo total em atividade", f"{dias_atividade} dias")
 
     st.divider()
-    st.subheader("🛠️ Checklist de Configuração")
-    p1 = st.checkbox("Configurações WebUI validadas (TCP/IP, APN, Watchdog)?")
-
+    st.subheader("🛠️ Checklist de Configuração e Testes")
+    
+    p1 = st.checkbox("Configurações WebUI validadas?")
+    
     if p1:
-        st.divider()
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.subheader("2. Qualidade de Sinal")
+        st.info("Preencha os resultados dos testes abaixo:")
+        col_testes_1, col_testes_2 = st.columns(2)
+        
+        with col_testes_1:
             cno_nivel = st.number_input("Nível de Sinal (dBHz)", 0.0, 80.0, 0.0)
             eth_status = st.selectbox("Porta Ethernet*", ["-", "OK", "Danificada"])
+            
+        with col_testes_2:
             sim_status = st.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
-        with col_b:
-            st.subheader("3. Parecer Técnico")
             real_time = st.selectbox("Real Time (Datalogger)*", ["-", "OK", "FALHA"])
-            parecer = st.selectbox("Resultado Final*", ["-", "Aprovado para Uso", "Aguardando Manutenção", "Reprovado"])
         
-        ressalvas = st.text_area("Observações Técnicas")
+        st.divider()
+        st.subheader("🎯 Parecer Final")
+        parecer = st.selectbox("Resultado Final*", ["-", "Aprovado para Uso", "Aguardando Manutenção", "Reprovado"])
+        ressalvas = st.text_area("Observações Técnicas / Ressalvas")
 
         if st.button("🚀 FINALIZAR E GERAR RELATÓRIO"):
             if "-" in [os_in, serial_in, eth_status, sim_status, real_time, parecer]:
@@ -115,51 +120,63 @@ with tab1:
                 pdf = PDF_BGAN()
                 pdf.add_page()
                 
-                # 1. Identificação (Limpa, sem |)
+                # --- SEÇÃO 1: IDENTIFICAÇÃO E CRONOLOGIA ---
                 pdf.secao_titulo("1. IDENTIFICAÇÃO E CRONOLOGIA")
                 pdf.set_font('Arial', 'B', 9)
+                
+                # Linha 1: Data e OS
                 pdf.cell(30, 6, "DATA TESTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, get_br_now().strftime('%d/%m/%Y %H:%M'), 0)
                 pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "OS:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, os_in, 0); pdf.ln()
                 
+                # Linha 2: Equipamento e S/N
                 pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "EQUIPAMENTO:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, f"{fab_in} {mod_in}", 0)
                 pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "S/N:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, serial_in, 0); pdf.ln()
                 
+                # Linha 3: Operador
                 pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "OPERADOR:"); pdf.set_font('Arial', '', 9); pdf.cell(160, 6, resp_in, 0); pdf.ln(8)
 
-                # Tempos
+                # Blocos de Tempo
                 pdf.set_font('Arial', 'B', 8); pdf.set_text_color(100, 100, 100)
                 pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
                 pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1)
                 pdf.ln(4)
 
-                # 2. Testes
+                # --- SEÇÃO 2: LISTA DE TESTES (LAYOUT ÚNICO) ---
                 pdf.secao_titulo("2. RESULTADOS DOS TESTES")
                 pdf.linha_teste("Nível de Sinal (C/No)", f"{cno_nivel} dBHz")
-                pdf.linha_teste("Porta Ethernet Física", eth_status)
-                pdf.linha_teste("Slot SIM Card", sim_status)
-                pdf.linha_teste("Comunicação Real Time", real_time)
+                pdf.linha_teste("Integridade da Porta Ethernet LAN", eth_status)
+                pdf.linha_teste("Integridade do Slot SIM Card", sim_status)
+                pdf.linha_teste("Comunicação Real Time com Datalogger", real_time)
                 pdf.ln(6)
 
-                # 3. Parecer Final (Cores Dinâmicas)
-                pdf.secao_titulo("3. PARECER FINAL")
+                # --- SEÇÃO 3: PARECER FINAL (CORES DINÂMICAS) ---
+                pdf.secao_titulo("3. PARECER TÉCNICO FINAL")
                 
-                # Definição da cor do status final
+                # Lógica de Cores solicitada
                 if parecer == "Aprovado para Uso":
-                    cor_final = (0, 107, 128)   # Azul
+                    cor_status = (0, 107, 128)   # Azul (Aprovado)
                 elif parecer == "Aguardando Manutenção":
-                    cor_final = (255, 140, 0) # Laranja
+                    cor_status = (255, 140, 0) # Laranja (Manutenção)
                 else:
-                    cor_final = (200, 0, 0)   # Vermelho
+                    cor_status = (200, 0, 0)   # Vermelho (Reprovado)
                 
-                pdf.set_text_color(*cor_final)
+                pdf.set_text_color(*cor_status)
                 pdf.set_font('Arial', 'B', 14)
                 pdf.cell(0, 10, f"STATUS FINAL: {parecer.upper()}", 0, 1, 'C')
                 
                 pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0)
-                pdf.multi_cell(0, 6, f"Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
+                pdf.ln(2)
+                pdf.multi_cell(0, 6, f"Observações e Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
 
-                # Download
+                # Gerar e disponibilizar download
                 pdf_output = pdf.output(dest='S')
-                st.download_button("⬇️ Baixar PDF", 
-                                 data=pdf_output if isinstance(pdf_output, bytes) else pdf_output.encode('latin-1'), 
-                                 file_name=f"Relatorio_BGAN_{serial_in}.pdf")
+                st.download_button(
+                    label="⬇️ Baixar Relatório PDF",
+                    data=pdf_output if isinstance(pdf_output, bytes) else pdf_output.encode('latin-1'),
+                    file_name=f"Relatorio_BGAN_{serial_in}.pdf",
+                    mime="application/pdf"
+                )
+                st.success("✅ Relatório gerado com sucesso!")
+
+with tab2:
+    st.info("O histórico de dados (CSV) será implementado conforme a necessidade de persistência.")
