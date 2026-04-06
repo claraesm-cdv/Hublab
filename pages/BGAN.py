@@ -58,10 +58,10 @@ with tab1:
     c1, c2, c3 = st.columns(3)
     os_in = c1.text_input("OS*")
     serial_in = c1.text_input("Nº de Série (S/N)*")
-    fab_in = c2.selectbox("Fabricante*", ["Cobham", "Hughes", "Thrane & Thrane", "Outro"])
-    mod_in = c2.text_input("Modelo (ex: Explorer 510)*")
-    resp_in = c3.text_input("Técnico Responsável*")
-    firmware_in = c3.text_input("Versão do Firmware")
+    fab_in = c2.selectbox("Fabricante*", [ "-","Hughes"])
+    mod_in = c2.selectbox("Modelo*", [ "-","9502"])
+    resp_in = c3.text_input("Operador*")
+
 
     st.divider()
     ligando = st.radio("O Terminal Inicializa corretamente?*", ["-", "Sim", "Não"], horizontal=True)
