@@ -12,7 +12,7 @@ def get_br_now():
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - BGAN", page_icon="📡", layout="wide")
 
-LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
+LOGO_PATH = os.path.join(os.getcwd(), "logo1.png")
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
 if 'periodos' not in st.session_state:
@@ -24,9 +24,9 @@ class PDF_BGAN(FPDF):
         if os.path.exists(LOGO_PATH):
             self.image(LOGO_PATH, 10, 8, 33)
         self.set_font('Arial', 'B', 14)
-        self.set_text_color(0, 107, 128) # Azul Petróleo
+        self.set_text_color(0, 107, 128) 
         self.cell(190, 10, 'RELATÓRIO DE AVALIAÇÃO TÉCNICA - BGAN', 0, 1, 'R')
-        self.set_draw_color(0, 180, 180) # Linha Turquesa
+        self.set_draw_color(0, 180, 180) 
         self.line(10, 25, 200, 25)
         self.ln(12)
 
@@ -38,20 +38,26 @@ class PDF_BGAN(FPDF):
         self.set_text_color(0, 0, 0)
         self.ln(2)
 
-    def linha_teste(self, nome, status, largura=190):
+    def linha_teste(self, nome, status, cor_custom=None):
         self.set_font('Arial', '', 8)
         self.set_text_color(60, 60, 60)
-        self.cell(largura * 0.75, 5, f"  > {nome}", 0, 0, 'L')
-        status_ok = ["OK", "Registrado", "Ativo", "Aprovado", "Sim", "Configurado"]
-        color = (0, 120, 0) if any(x in str(status) for x in status_ok) else (200, 0, 0)
+        self.cell(142.5, 5, f"  > {nome}", 0, 0, 'L')
+        
+        # Lógica de cores automática se não houver cor customizada
+        if cor_custom:
+            color = cor_custom
+        else:
+            status_ok = ["OK", "Registrado", "Ativo", "Aprovado", "Sim", "Configurado"]
+            color = (0, 120, 0) if any(x in str(status) for x in status_ok) else (200, 0, 0)
+        
         self.set_text_color(*color)
-        self.cell(largura * 0.25, 5, f"[ {status} ]", 0, 1, 'R')
+        self.cell(47.5, 5, f"[ {status} ]", 0, 1, 'R')
         self.set_text_color(0, 0, 0)
 
 # --- INTERFACE ---
 st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
 
-tab1, tab2 = st.tabs(["📝 Teste de Validação", "📊 Histórico"])
+tab1, tab2 = st.tabs(["📝 Verificação do equipamento", "📊 Histórico"])
 
 with tab1:
     st.subheader("1. Identificação do Terminal")
@@ -79,7 +85,6 @@ with tab1:
         st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
         st.rerun()
 
-    # Cálculos de tempo
     dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
     primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
     dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
@@ -91,36 +96,22 @@ with tab1:
     st.divider()
     st.subheader("🛠️ Checklist de Configuração Sequencial (WebUI)")
 
-    # --- LÓGICA DE CASCATA ---
+    # --- FLUXO SEQUENCIAL ---
     step1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
-    
     step_final_valid = False
     
     if step1:
         st.info("🔗 Acesse o WebUI: http://192.168.128.100")
         if st.checkbox("2. Página inicial do equipamento carregada?"):
             st.markdown("---")
-            st.markdown("**3. Connections > Manage Contexts**")
-            st.caption("Owner: 192.168.128.101 | Service: Standard | APN: STRATOS ou WILTD")
-            if st.checkbox("Configuração do Passo 3 conferida?"):
-                st.markdown("**4. Connections > Automatic Contexts**")
-                st.caption("Static IP ACA: 1 | Enable: Off | Service: Standard")
-                if st.checkbox("Configuração do Passo 4 conferida?"):
-                    st.markdown("**5. Settings > Ethernet**")
-                    st.caption("Wake On LAN: Off | Idle Timeout: 0 | Ethernet: Default")
-                    if st.checkbox("Configuração do Passo 5 conferida?"):
-                        st.markdown("**6. Settings > ATC Setup**")
-                        st.caption("ATC Robustness: Off")
-                        if st.checkbox("Configuração do Passo 6 conferida?"):
-                            st.markdown("**7. M2M (Watchdog & Always On)**")
-                            st.caption("Watchdog: On (8.8.8.8) | Always On: On (192.168.128.101)")
-                            if st.checkbox("Configuração do Passo 7 conferida?"):
-                                st.markdown("**8. Security**")
-                                st.caption("Remote SMS Control: On | Password: remote")
-                                if st.checkbox("Configuração do Passo 8 finalizada?"):
+            if st.checkbox("3. Connections > Manage Contexts (APN STRATOS/WILTD)"):
+                if st.checkbox("4. Connections > Automatic Contexts (Static ACA: 1)"):
+                    if st.checkbox("5. Settings > Ethernet (WoL: Off / Idle: 0)"):
+                        if st.checkbox("6. Settings > ATC Setup (Robustness: Off)"):
+                            if st.checkbox("7. M2M (Watchdog: On / Always On: On)"):
+                                if st.checkbox("8. Security (Remote SMS Control: On)"):
                                     step_final_valid = True
 
-    # --- LIBERAÇÃO DOS TESTES ---
     if step_final_valid:
         st.success("✅ Configurações internas validadas.")
         st.divider()
@@ -129,6 +120,11 @@ with tab1:
         
         with col_t1:
             cno_nivel = st.number_input("Nível de Sinal (dBHz)", 0.0, 80.0, 0.0)
+            # Lógica visual no Streamlit para o nível de sinal
+            if cno_nivel >= 60: st.success(f"Sinal Excelente: {cno_nivel} dBHz")
+            elif 53 <= cno_nivel < 60: st.warning(f"Sinal Médio: {cno_nivel} dBHz")
+            else: st.error(f"Sinal Insuficiente: {cno_nivel} dBHz")
+            
             eth_status = st.selectbox("Porta Ethernet*", ["-", "OK", "Danificada"])
         with col_t2:
             sim_status = st.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
@@ -146,62 +142,54 @@ with tab1:
                 pdf = PDF_BGAN()
                 pdf.add_page()
                 
-                # Seção 1: Identificação (Limpa)
+                # Identificação
                 pdf.secao_titulo("1. IDENTIFICAÇÃO E CRONOLOGIA")
                 pdf.set_font('Arial', 'B', 9)
-                pdf.cell(30, 6, "DATA TESTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, get_br_now().strftime('%d/%m/%Y %H:%M'), 0)
-                pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "OS:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, os_in, 0); pdf.ln()
-                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "EQUIPAMENTO:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, f"{fab_in} {mod_in}", 0)
-                pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "S/N:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, serial_in, 0); pdf.ln()
-                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "OPERADOR:"); pdf.set_font('Arial', '', 9); pdf.cell(160, 6, resp_in, 0); pdf.ln(8)
+                pdf.cell(30, 6, "DATA TESTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, get_br_now().strftime('%d/%m/%Y %H:%M'))
+                pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "OS:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, os_in); pdf.ln()
+                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "EQUIPAMENTO:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, f"{fab_in} {mod_in}")
+                pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "S/N:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, serial_in); pdf.ln()
+                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "OPERADOR:"); pdf.set_font('Arial', '', 9); pdf.cell(160, 6, resp_in); pdf.ln(8)
 
                 pdf.set_font('Arial', 'B', 8); pdf.set_text_color(100, 100, 100)
                 pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
                 pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1); pdf.ln(4)
 
-                # Seção 2: Configuração
+                # Configurações
                 pdf.secao_titulo("2. CONFIGURAÇÕES INTERNAS VALIDADAS (WEBUI)")
-                pdf.linha_teste("Connections (Manage/Automatic Contexts)", "Configurado")
-                pdf.linha_teste("Ethernet Setup & ATC Robustness", "Configurado")
-                pdf.linha_teste("M2M Setup (Watchdog / Always On)", "Configurado")
-                pdf.linha_teste("Security (Remote SMS Control)", "Configurado")
+                pdf.linha_teste("Parâmetros de Conexão e Contextos", "Configurado")
+                pdf.linha_teste("Configurações de Ethernet e ATC", "Configurado")
+                pdf.linha_teste("M2M Setup e Segurança", "Configurado")
                 pdf.ln(4)
 
-                # Seção 3: Testes Técnicos (Lista Única)
+                # Resultados com a Nova Lógica de Cores do Sinal
                 pdf.secao_titulo("3. RESULTADOS DOS TESTES TÉCNICOS")
-                pdf.linha_teste("Nível de Sinal (C/No)", f"{cno_nivel} dBHz")
+                
+                # Definindo cor do sinal para o PDF
+                if cno_nivel >= 60: cor_sinal = (0, 120, 0)       # Verde
+                elif 53 <= cno_nivel < 60: cor_sinal = (255, 140, 0) # Laranja
+                else: cor_sinal = (200, 0, 0)                     # Vermelho
+                
+                pdf.linha_teste("Nível de Sinal (C/No)", f"{cno_nivel} dBHz", cor_custom=cor_sinal)
                 pdf.linha_teste("Integridade da Porta Ethernet LAN", eth_status)
                 pdf.linha_teste("Integridade do Slot SIM Card", sim_status)
                 pdf.linha_teste("Comunicação Real Time com Datalogger", real_time)
                 pdf.ln(6)
 
-                # Seção 4: Parecer Final (Cores Dinâmicas)
+                # Parecer Final
                 pdf.secao_titulo("4. PARECER TÉCNICO FINAL")
-                if parecer == "Aprovado para Uso": cor_status = (0, 107, 128) # Azul
-                elif parecer == "Aguardando Manutenção": cor_status = (255, 140, 0) # Laranja
-                else: cor_status = (200, 0, 0) # Vermelho
+                if parecer == "Aprovado para Uso": cor_status = (0, 107, 128)
+                elif parecer == "Aguardando Manutenção": cor_status = (255, 140, 0)
+                else: cor_status = (200, 0, 0)
                 
                 pdf.set_text_color(*cor_status); pdf.set_font('Arial', 'B', 14)
                 pdf.cell(0, 10, f"STATUS FINAL: {parecer.upper()}", 0, 1, 'C')
                 pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0); pdf.ln(2)
                 pdf.multi_cell(0, 6, f"Observações: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
 
-                # --- GERAÇÃO SEGURA DO PDF (Resolvendo o AttributeError) ---
                 try:
                     pdf_output = pdf.output(dest='S')
-                    if isinstance(pdf_output, str):
-                        pdf_bytes = pdf_output.encode('latin-1')
-                    else:
-                        pdf_bytes = bytes(pdf_output)
-                    
-                    st.download_button(
-                        label="⬇️ Baixar Relatório PDF",
-                        data=pdf_bytes,
-                        file_name=f"Relatorio_BGAN_{serial_in}.pdf",
-                        mime="application/pdf"
-                    )
+                    pdf_bytes = bytes(pdf_output) if not isinstance(pdf_output, str) else pdf_output.encode('latin-1')
+                    st.download_button(label="⬇️ Baixar Relatório PDF", data=pdf_bytes, file_name=f"Relatorio_BGAN_{serial_in}.pdf", mime="application/pdf")
                 except Exception as e:
-                    st.error(f"Erro ao processar o PDF: {e}")
-
-with tab2:
-    st.info("O histórico de passagens será implementado via integração com banco de dados ou CSV.")
+                    st.error(f"Erro ao gerar PDF: {e}")
