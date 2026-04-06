@@ -215,7 +215,7 @@ with tab1:
                 pdf.multi_cell(0, 6, f"Observações: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
 
                 # --- NOMEAÇÃO DO ARQUIVO ---
-                data_str = get_br_now().strftime("%d-%m-%Y")
+                data_str = get_br_now().strftime("%d%m%Y")
                 pdf_filename = f"{data_str}_BGAN_{serial_in}.pdf"
 
                 try:
