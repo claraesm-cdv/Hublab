@@ -63,7 +63,7 @@ with tab1:
     # Adicionado checkbox para ignorar histórico e OS
     c1, c2, c3, c4 = st.columns([2, 2, 2, 3])
     
-    sem_historico = c4.checkbox("🚫 Equipamento Novo (Sem histórico/OS)")
+    sem_historico = c4.checkbox("🚫 Equipamentosem histórico/OS)")
     
     os_in = c1.text_input("OS*", value="N/A" if sem_historico else "", disabled=sem_historico)
     serial_in = c2.text_input("IMEI*")
