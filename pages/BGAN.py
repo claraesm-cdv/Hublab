@@ -13,7 +13,7 @@ def get_br_now():
 st.set_page_config(page_title="Laboratório CDV - Avaliação BGAN", page_icon="📡", layout="wide")
 
 DB_FILE = "historico_bgan.csv"
-LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
+LOGO_PATH = os.path.join(os.getcwd(), "logo1.png")
 
 # --- ESTADOS DA SESSÃO ---
 if 'inicio_sessao' not in st.session_state:
