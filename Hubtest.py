@@ -66,7 +66,7 @@ st.markdown("""
 # 3. Cabeçalho
 st.markdown("""
     <div class="org-banner">
-        <p style="color: #00b4b4; font-weight: 500;">SISTEMA DE GESTÃO TÉCNICA</p>
+        <p style="color: #00b4b4; font-weight: 500;">PORTAL UNIFICADO DE TESTES</p>
         <h1>LABORATÓRIO CDV</h1>
         <div style="width: 60px; height: 3px; background-color: #00b4b4; margin: 15px auto;"></div>
     </div>
