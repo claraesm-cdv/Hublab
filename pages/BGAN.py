@@ -5,11 +5,13 @@ from fpdf import FPDF
 import os
 import sqlite3
 
-# --- BANCO DE DADOS (SQLite) ---
-DB_NAME = "relatorios_bgan.db"
+# --- FUNÇÕES DE APOIO ---
+def get_br_now():
+    tz_br = timezone(timedelta(hours=-3))
+    return datetime.now(tz_br)
 
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect("relatorios_bgan.db")
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS testes 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -19,68 +21,16 @@ def init_db():
     conn.commit()
     conn.close()
 
-def salvar_relatorio(dados):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('''INSERT INTO testes (data_teste, os, imei, operador, fabricante, modelo, sinal, ethernet, sim_card, real_time, parecer, observacoes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', dados)
-    conn.commit()
-    conn.close()
-
-# Inicializa o banco ao rodar o app
 init_db()
 
-# --- AJUSTE DE FUSO HORÁRIO (Brasília) ---
-def get_br_now():
-    tz_br = timezone(timedelta(hours=-3))
-    return datetime.now(tz_br)
+# --- INTERFACE ---
+st.set_page_config(page_title="Laboratório CDV - BGAN", layout="wide")
+st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Laboratório CDV - BGAN", page_icon="📡", layout="wide")
-
-LOGO_PATH = os.path.join(os.getcwd(), "logo1.png")
-
-# --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
 if 'periodos' not in st.session_state:
     st.session_state.periodos = [{"entrada": get_br_now().date(), "saida": get_br_now().date()}]
 
-# --- CLASSE PDF ESTILIZADA (Mesma do seu código original) ---
-class PDF_BGAN(FPDF):
-    def header(self):
-        if os.path.exists(LOGO_PATH):
-            self.image(LOGO_PATH, 10, 8, 33)
-        self.set_font('Arial', 'B', 14)
-        self.set_text_color(0, 107, 128) 
-        self.cell(190, 10, 'RELATÓRIO DE AVALIAÇÃO TÉCNICA - BGAN', 0, 1, 'R')
-        self.set_draw_color(0, 180, 180) 
-        self.line(10, 25, 200, 25)
-        self.ln(12)
-
-    def secao_titulo(self, titulo):
-        self.set_fill_color(0, 107, 128)
-        self.set_font('Arial', 'B', 10)
-        self.set_text_color(255, 255, 255)
-        self.cell(0, 7, f" {titulo}", 0, 1, 'L', True)
-        self.set_text_color(0, 0, 0)
-        self.ln(2)
-
-    def linha_teste(self, nome, status, cor_custom=None):
-        self.set_font('Arial', '', 8)
-        self.set_text_color(60, 60, 60)
-        self.cell(142.5, 5, f"  > {nome}", 0, 0, 'L')
-        if cor_custom:
-            color = cor_custom
-        else:
-            status_ok = ["OK", "Registrado", "Ativo", "Aprovado", "Sim", "Configurado"]
-            color = (0, 120, 0) if any(x in str(status) for x in status_ok) else (200, 0, 0)
-        self.set_text_color(*color)
-        self.cell(47.5, 5, f"[ {status} ]", 0, 1, 'R')
-        self.set_text_color(0, 0, 0)
-
-# --- INTERFACE ---
-st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
-
-tab1, tab2 = st.tabs(["📝 Verificação do equipamento", "📊 Histórico de Testes"])
+tab1, tab2 = st.tabs(["📝 Verificação", "📊 Histórico"])
 
 with tab1:
     st.subheader("1. Identificação do Terminal")
@@ -88,21 +38,23 @@ with tab1:
     
     sem_historico = c4.checkbox("🚫 Equipamento Novo (Sem histórico/OS)")
     
-    os_in = c1.text_input("OS*", value="N/A" if sem_historico else "", disabled=sem_historico)
+    os_in = c1.text_input("OS*", value="N/A" if sem_historico else "")
     serial_in = c2.text_input("IMEI*")
     resp_in = c3.text_input("Operador*")
     
-    fab_in = c1.selectbox("Fabricante*", ["-", "Hughes"])
-    mod_in = c2.selectbox("Modelo*", ["-", "9502"])
+    # Inicialização das variáveis de cálculo
+    dias_atividade = 0
+    dias_desde_primeiro = 0
 
-    st.write("---")
-    
     if not sem_historico:
+        st.markdown("---")
         st.markdown("##### ⏳ Histórico de Passagens em Campo")
+        
         for i, periodo in enumerate(st.session_state.periodos):
             col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
-            st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}", format="DD/MM/YYYY")
-            st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}", format="DD/MM/YYYY")
+            st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}")
+            st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}")
+            
             if len(st.session_state.periodos) > 1:
                 if col_p3.button("🗑️", key=f"del_{i}"):
                     st.session_state.periodos.pop(i)
@@ -112,14 +64,24 @@ with tab1:
             st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
             st.rerun()
 
+        # CÁLCULO DOS DIAS
         dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
         primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
         dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
+
+    # EXIBIÇÃO DOS CONTADORES (Agora fora do IF para não sumirem)
+    st.write("")
+    c_res1, c_res2 = st.columns(2)
+    
+    if sem_historico:
+        c_res1.metric("Tempo desde 1º uso", "Novo")
+        c_res2.metric("Tempo total em atividade", "0 dias")
     else:
-        dias_atividade = 0
-        dias_desde_primeiro = 0
+        c_res1.metric("Tempo desde 1º uso", f"{dias_desde_primeiro} dias")
+        c_res2.metric("Tempo total em atividade", f"{dias_atividade} dias")
 
     st.divider()
+
     
     # --- Checklist (Simplificado para o exemplo, mantendo sua lógica) ---
     st.subheader("🛠️ Checklist e Testes")
