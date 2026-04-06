@@ -14,7 +14,6 @@ st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_
 DB_FILE = "historico.csv"
 LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
-# Inicialização do Session State
 if 'inicio_sessao' not in st.session_state:
     st.session_state.inicio_sessao = get_br_now()
 
@@ -32,7 +31,8 @@ def salvar_no_historico(dados_id, parecer, ressalvas, checklist_detalhado, tempo
         "Fabricante": str(dados_id.get("Fabricante", "")),
         "Modelo": str(dados_id.get("Modelo", "")),
         "Responsável": str(dados_id.get("Responsável", "")),
-        "Dias de Uso": str(dados_id.get("Uso", "")),
+        "Tempo Total (Desde 1º uso)": str(dados_id.get("Tempo_Desde_Primeiro", "")),
+        "Tempo em Atividade": str(dados_id.get("Tempo_Atividade", "")),
         "Parecer": parecer,
         "Ressalvas": ressalvas
     }
@@ -107,7 +107,12 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.cell(25, 6, "Fabricante:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Fabricante"]), 0)
     pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Modelo:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Modelo"]), 0); pdf.ln()
     pdf.cell(25, 6, "Responsável:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Responsável"]), 0)
-    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Uso Total:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Uso"]), 0); pdf.ln()
+    pdf.ln(2)
+    
+    # Tempos de Uso
+    pdf.set_font('Arial', 'B', 9)
+    pdf.cell(50, 6, "Tempo desde 1º uso:", 0); pdf.set_font('Arial', '', 9); pdf.cell(45, 6, str(dados_id["Tempo_Desde_Primeiro"]), 0)
+    pdf.set_font('Arial', 'B', 9); pdf.cell(50, 6, "Tempo em atividade:", 0); pdf.set_font('Arial', '', 9); pdf.cell(45, 6, str(dados_id["Tempo_Atividade"]), 0); pdf.ln()
     pdf.ln(4)
     
     if ligando == "Não":
@@ -160,11 +165,9 @@ with tab1:
     mod_in = c2.text_input("Modelo*")
     resp_in = c3.text_input("Responsável*")
     
-    # --- NOVA LÓGICA DE DATAS (SOMA DE PERÍODOS) ---
     st.write("---")
-    st.markdown("##### ⏳ Histórico de Permanência")
+    st.markdown("##### ⏳ Histórico de Passagens")
     
-    # Renderiza os campos de data dinamicamente
     for i, periodo in enumerate(st.session_state.periodos):
         col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
         st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}")
@@ -179,10 +182,18 @@ with tab1:
         st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
         st.rerun()
 
-    # Cálculo da soma total
-    dias_calc = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
-    st.info(f"📅 **Permanência Total:** {dias_calc} dias")
-    # -----------------------------------------------
+    # --- CÁLCULO DOS TEMPOS ---
+    # 1. Tempo em Atividade (Soma dos intervalos)
+    dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
+    
+    # 2. Tempo desde o primeiro uso (Data atual - Primeira data de entrada registrada)
+    primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
+    dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
+
+    c_res1, c_res2 = st.columns(2)
+    c_res1.metric("Tempo desde 1º uso", f"{dias_desde_primeiro} dias")
+    c_res2.metric("Tempo em atividade", f"{dias_atividade} dias")
+    # --------------------------
 
     st.divider()
     ligando = st.radio("Equipamento liga?*", ["-", "Sim", "Não"], horizontal=True)
@@ -220,7 +231,7 @@ with tab1:
             with st.expander("🛠️ Analógicas"):
                 st_anl = {}
                 cols_an = st.columns(3)
-                for i in range(1, 17): # Ajustado para 16 canais conforme loop original
+                for i in range(1, 17):
                     st_anl[f"ANL {i}"] = "OK" if cols_an[(i-1)%3].checkbox(f"ANL {i}", value=True, key=f"an_{i}") else "FALHA"
                 checklist_detalhado["Entradas Analógicas"] = st_anl
         with cio2:
@@ -249,25 +260,28 @@ with tab1:
                 agora_br = get_br_now()
                 duracao = agora_br - st.session_state.inicio_sessao
                 tempo_str = f"{duracao.seconds // 60:02d}:{duracao.seconds % 60:02d} min"
-                dados_pdf = {"OS": os_in, "Serial": serial_in, "Fabricante": fab_in, "Modelo": mod_in, "Responsável": resp_in, "Uso": f"{dias_calc} dias"}
+                
+                dados_pdf = {
+                    "OS": os_in, 
+                    "Serial": serial_in, 
+                    "Fabricante": fab_in, 
+                    "Modelo": mod_in, 
+                    "Responsável": resp_in, 
+                    "Tempo_Desde_Primeiro": f"{dias_desde_primeiro} dias",
+                    "Tempo_Atividade": f"{dias_atividade} dias"
+                }
                 
                 salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
-                
                 pdf_output = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
                 
                 if not isinstance(pdf_output, bytes):
                     pdf_output = bytes(pdf_output)
 
                 fname = f"{agora_br.strftime('%d%m%y')}_DL_{serial_in}.pdf"
-                
                 st.success(f"✅ Relatório Gerado!")
-                st.download_button(
-                    label="📥 Baixar PDF",
-                    data=pdf_output,
-                    file_name=fname,
-                    mime="application/pdf"
-                )
-                # Resetar a sessão de datas e início de tempo para o próximo
+                st.download_button("📥 Baixar PDF", data=pdf_output, file_name=fname, mime="application/pdf")
+                
+                # Reset
                 st.session_state.inicio_sessao = get_br_now()
                 st.session_state.periodos = [{"entrada": get_br_now().date(), "saida": get_br_now().date()}]
 
