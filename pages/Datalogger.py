@@ -1,19 +1,23 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fpdf import FPDF
 import os
 
-# --- AJUSTE DE FUSO HORÁRIO (UTC-3) ---
+# --- AJUSTE DE FUSO HORÁRIO (UTC-3 BRASÍLIA) ---
 def get_br_now():
-    return datetime.utcnow() - timedelta(hours=3)
+    # Usando timezone fixo para evitar problemas com utcnow() depreciado
+    tz_br = timezone(timedelta(hours=-3))
+    return datetime.now(tz_br)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_icon="🧪", layout="wide")
 
 DB_FILE = "historico.csv"
+# Se não tiver a logo, o PDF apenas pulará a imagem
 LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
+# Inicialização de estados
 if 'inicio_sessao' not in st.session_state:
     st.session_state.inicio_sessao = get_br_now()
 
@@ -102,22 +106,12 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
     pdf.set_font('Arial', 'B', 9)
-    
-    # Linha 1: OS e Serial
     pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["OS"]), 0)
     pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Serial:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Serial"]), 0); pdf.ln()
-    
-    # Linha 2: Fabricante e Modelo
     pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Fabricante:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Fabricante"]), 0)
     pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Modelo:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Modelo"]), 0); pdf.ln()
-    
-    # Linha 3: Responsável (Sozinho para evitar sobreposição)
     pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Responsável:", 0); pdf.set_font('Arial', '', 9); pdf.cell(165, 6, str(dados_id["Responsável"]), 0); pdf.ln()
-    
-    # Espaçamento para os tempos
     pdf.ln(2)
-    
-    # Linha 4: Tempos de Uso (Com destaque e sem sobreposição)
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(40, 6, "Tempo desde 1º uso:", 0); pdf.set_font('Arial', '', 9); pdf.cell(55, 6, str(dados_id["Tempo_Desde_Primeiro"]), 0)
     pdf.set_font('Arial', 'B', 9); pdf.cell(40, 6, "Tempo em atividade:", 0); pdf.set_font('Arial', '', 9); pdf.cell(55, 6, str(dados_id["Tempo_Atividade"]), 0); pdf.ln()
@@ -158,7 +152,7 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, f"Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
     
-    return pdf.output()
+    return pdf.output(dest='S').encode('latin1')
 
 # --- INTERFACE ---
 st.title("🧪 Laboratório CDV - Avaliação Datalogger")
@@ -178,8 +172,13 @@ with tab1:
     
     for i, periodo in enumerate(st.session_state.periodos):
         col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
-        st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}")
-        st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}")
+        # FORMATO BRASILEIRO NO DATE_INPUT
+        st.session_state.periodos[i]["entrada"] = col_p1.date_input(
+            f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}", format="DD/MM/YYYY"
+        )
+        st.session_state.periodos[i]["saida"] = col_p2.date_input(
+            f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}", format="DD/MM/YYYY"
+        )
         
         if len(st.session_state.periodos) > 1:
             if col_p3.button("🗑️", key=f"del_{i}"):
@@ -276,17 +275,14 @@ with tab1:
                 }
                 
                 salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
-                pdf_output = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
-                
-                if not isinstance(pdf_output, bytes):
-                    pdf_output = bytes(pdf_output)
+                pdf_bytes = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
 
                 fname = f"{agora_br.strftime('%d%m%y')}_DL_{serial_in}.pdf"
                 st.success(f"✅ Relatório Gerado!")
-                st.download_button("📥 Baixar PDF", data=pdf_output, file_name=fname, mime="application/pdf")
+                st.download_button("📥 Baixar PDF", data=pdf_bytes, file_name=fname, mime="application/pdf")
                 
+                # Reinicia apenas a sessão de tempo
                 st.session_state.inicio_sessao = get_br_now()
-                st.session_state.periodos = [{"entrada": get_br_now().date(), "saida": get_br_now().date()}]
 
 with tab2:
     if os.path.exists(DB_FILE):
