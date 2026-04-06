@@ -60,7 +60,7 @@ with tab1:
     st.subheader("1. Identificação do Terminal")
     c1, c2, c3 = st.columns(3)
     os_in = c1.text_input("OS*")
-    serial_in = c2.text_input("Nº de Série (S/N)*")
+    serial_in = c2.text_input("IMEI*")
     resp_in = c3.text_input("Operador*")
     
     fab_in = c1.selectbox("Fabricante*", ["-", "Hughes"])
@@ -176,7 +176,7 @@ with tab1:
                 pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "FABRICANTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, fab_in)
                 pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "MODELO:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, mod_in); pdf.ln()
                 
-                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "S/N:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, serial_in)
+                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "IMEI:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, serial_in)
                 pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "OPERADOR:"); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, resp_in); pdf.ln(8)
 
                 pdf.set_font('Arial', 'B', 8); pdf.set_text_color(100, 100, 100)
