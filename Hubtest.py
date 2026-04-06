@@ -79,7 +79,7 @@ with col_central:
     st.markdown("""
         <div class="app-card">
             <span style='font-size: 50px;'>📡</span>
-            <h2 style='color: #333; margin-top: 15px;'>Módulo Datalogger</h2>
+            <h2 style='color: #333; margin-top: 15px;'>Datalogger</h2>
             <p style='color: #666;'>Acesse o ambiente de inspeção e pareceres técnicos.</p>
         </div>
         <br>
