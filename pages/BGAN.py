@@ -12,7 +12,7 @@ def get_br_now():
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - BGAN", page_icon="📡", layout="wide")
 
-LOGO_PATH = os.path.join(os.getcwd(), "logo1.png")
+LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
 if 'periodos' not in st.session_state:
@@ -42,14 +42,11 @@ class PDF_BGAN(FPDF):
         self.set_font('Arial', '', 8)
         self.set_text_color(60, 60, 60)
         self.cell(142.5, 5, f"  > {nome}", 0, 0, 'L')
-        
-        # Lógica de cores automática se não houver cor customizada
         if cor_custom:
             color = cor_custom
         else:
             status_ok = ["OK", "Registrado", "Ativo", "Aprovado", "Sim", "Configurado"]
             color = (0, 120, 0) if any(x in str(status) for x in status_ok) else (200, 0, 0)
-        
         self.set_text_color(*color)
         self.cell(47.5, 5, f"[ {status} ]", 0, 1, 'R')
         self.set_text_color(0, 0, 0)
@@ -57,7 +54,7 @@ class PDF_BGAN(FPDF):
 # --- INTERFACE ---
 st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
 
-tab1, tab2 = st.tabs(["📝 Verificação do equipamento", "📊 Histórico"])
+tab1, tab2 = st.tabs(["📝 Teste de Campo/Bancada", "📊 Histórico"])
 
 with tab1:
     st.subheader("1. Identificação do Terminal")
@@ -94,38 +91,75 @@ with tab1:
     c_res2.metric("Tempo total em atividade", f"{dias_atividade} dias")
 
     st.divider()
-    st.subheader("🛠️ Checklist de Configuração Sequencial (WebUI)")
+    st.subheader("🛠️ Checklist de Configuração Sequencial")
 
-    # --- FLUXO SEQUENCIAL ---
-    step1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
+    # --- INÍCIO DO FLUXO EM CASCATA ---
     step_final_valid = False
-    
-    if step1:
-        st.info("🔗 Acesse o WebUI: http://192.168.128.100")
-        if st.checkbox("2. Página inicial do equipamento carregada?"):
-            st.markdown("---")
-            if st.checkbox("3. Connections > Manage Contexts (APN STRATOS/WILTD)"):
-                if st.checkbox("4. Connections > Automatic Contexts (Static ACA: 1)"):
-                    if st.checkbox("5. Settings > Ethernet (WoL: Off / Idle: 0)"):
-                        if st.checkbox("6. Settings > ATC Setup (Robustness: Off)"):
-                            if st.checkbox("7. M2M (Watchdog: On / Always On: On)"):
-                                if st.checkbox("8. Security (Remote SMS Control: On)"):
-                                    step_final_valid = True
 
+    # Passo 0: Modo Avião
+    s0 = st.checkbox("0. Modo Avião do computador ligado?")
+    if s0:
+        # Passo 1: TCP/IP
+        st.markdown("---")
+        st.info("💡 **Instrução:** Vá em Central de Rede > Alterar Opções do Adaptador > Ethernet > Propriedades > Protocolo IP Versão 4.")
+        s1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
+        if s1:
+            # Passo 2: WebUI
+            st.markdown("---")
+            st.info("🔗 **Acesse o WebUI:** http://192.168.128.100")
+            s2 = st.checkbox("2. Página inicial do equipamento carregada?")
+            if s2:
+                # Passo 3: Manage Contexts
+                st.markdown("---")
+                st.warning("⚙️ **Configuração:** Connections > Manage Contexts")
+                st.write("- Owner: 192.168.128.101 | Service: Standard | APN: STRATOS ou WILTD")
+                s3 = st.checkbox("3. Configurações de Contexto conferidas?")
+                if s3:
+                    # Passo 4: Automatic Contexts
+                    st.markdown("---")
+                    st.warning("⚙️ **Configuração:** Connections > Automatic Contexts")
+                    st.write("- Static IP ACA: 1 | Enable: Off | Service: Standard")
+                    s4 = st.checkbox("4. Contexto Automático conferido?")
+                    if s4:
+                        # Passo 5: Ethernet
+                        st.markdown("---")
+                        st.warning("⚙️ **Configuração:** Settings > Ethernet")
+                        st.write("- Wake On LAN: Off | Idle Timeout: 0 | Ethernet: Default")
+                        s5 = st.checkbox("5. Configurações de Ethernet conferidas?")
+                        if s5:
+                            # Passo 6: ATC Setup
+                            st.markdown("---")
+                            st.warning("⚙️ **Configuração:** Settings > ATC Setup")
+                            st.write("- ATC Robustness: Off")
+                            s6 = st.checkbox("6. ATC Setup conferido?")
+                            if s6:
+                                # Passo 7: M2M
+                                st.markdown("---")
+                                st.warning("⚙️ **Configuração:** Settings > M2M")
+                                st.write("- Watchdog: On (8.8.8.8) | Always On: On (192.168.128.101)")
+                                s7 = st.checkbox("7. Watchdog e Always On configurados?")
+                                if s7:
+                                    # Passo 8: Security
+                                    st.markdown("---")
+                                    st.warning("⚙️ **Configuração:** Settings > Security")
+                                    st.write("- Remote SMS Control: On | Password: remote")
+                                    if st.checkbox("8. Configurações de Segurança finalizadas?"):
+                                        step_final_valid = True
+
+    # --- LIBERAÇÃO DOS TESTES ---
     if step_final_valid:
-        st.success("✅ Configurações internas validadas.")
+        st.success("✅ Todas as configurações internas foram validadas.")
         st.divider()
         st.subheader("📡 Testes de Sinal e Hardware")
         col_t1, col_t2 = st.columns(2)
         
         with col_t1:
             cno_nivel = st.number_input("Nível de Sinal (dBHz)", 0.0, 80.0, 0.0)
-            # Lógica visual no Streamlit para o nível de sinal
             if cno_nivel >= 60: st.success(f"Sinal Excelente: {cno_nivel} dBHz")
             elif 53 <= cno_nivel < 60: st.warning(f"Sinal Médio: {cno_nivel} dBHz")
             else: st.error(f"Sinal Insuficiente: {cno_nivel} dBHz")
-            
             eth_status = st.selectbox("Porta Ethernet*", ["-", "OK", "Danificada"])
+            
         with col_t2:
             sim_status = st.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
             real_time = st.selectbox("Real Time (Datalogger)*", ["-", "OK", "FALHA"])
@@ -142,7 +176,7 @@ with tab1:
                 pdf = PDF_BGAN()
                 pdf.add_page()
                 
-                # Identificação
+                # Seção 1
                 pdf.secao_titulo("1. IDENTIFICAÇÃO E CRONOLOGIA")
                 pdf.set_font('Arial', 'B', 9)
                 pdf.cell(30, 6, "DATA TESTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, get_br_now().strftime('%d/%m/%Y %H:%M'))
@@ -155,20 +189,19 @@ with tab1:
                 pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
                 pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1); pdf.ln(4)
 
-                # Configurações
+                # Seção 2: Configurações
                 pdf.secao_titulo("2. CONFIGURAÇÕES INTERNAS VALIDADAS (WEBUI)")
-                pdf.linha_teste("Parâmetros de Conexão e Contextos", "Configurado")
-                pdf.linha_teste("Configurações de Ethernet e ATC", "Configurado")
-                pdf.linha_teste("M2M Setup e Segurança", "Configurado")
+                pdf.linha_teste("Modo Avião do Host e TCP/IP", "OK")
+                pdf.linha_teste("Conexão WebUI e Contextos", "Configurado")
+                pdf.linha_teste("Ethernet, ATC e M2M Setup", "Configurado")
+                pdf.linha_teste("Security e Remote SMS Control", "Configurado")
                 pdf.ln(4)
 
-                # Resultados com a Nova Lógica de Cores do Sinal
+                # Seção 3: Testes
                 pdf.secao_titulo("3. RESULTADOS DOS TESTES TÉCNICOS")
-                
-                # Definindo cor do sinal para o PDF
-                if cno_nivel >= 60: cor_sinal = (0, 120, 0)       # Verde
-                elif 53 <= cno_nivel < 60: cor_sinal = (255, 140, 0) # Laranja
-                else: cor_sinal = (200, 0, 0)                     # Vermelho
+                if cno_nivel >= 60: cor_sinal = (0, 120, 0)
+                elif 53 <= cno_nivel < 60: cor_sinal = (255, 140, 0)
+                else: cor_sinal = (200, 0, 0)
                 
                 pdf.linha_teste("Nível de Sinal (C/No)", f"{cno_nivel} dBHz", cor_custom=cor_sinal)
                 pdf.linha_teste("Integridade da Porta Ethernet LAN", eth_status)
@@ -176,7 +209,7 @@ with tab1:
                 pdf.linha_teste("Comunicação Real Time com Datalogger", real_time)
                 pdf.ln(6)
 
-                # Parecer Final
+                # Seção 4: Parecer
                 pdf.secao_titulo("4. PARECER TÉCNICO FINAL")
                 if parecer == "Aprovado para Uso": cor_status = (0, 107, 128)
                 elif parecer == "Aguardando Manutenção": cor_status = (255, 140, 0)
