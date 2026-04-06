@@ -12,6 +12,7 @@ def get_br_now():
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - BGAN", page_icon="📡", layout="wide")
 
+# Caminho da logo (ajuste se necessário)
 LOGO_PATH = os.path.join(os.getcwd(), "logo1.png")
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
@@ -58,8 +59,13 @@ tab1, tab2 = st.tabs(["📝 Verificação do equipamento", "📊 Histórico"])
 
 with tab1:
     st.subheader("1. Identificação do Terminal")
-    c1, c2, c3 = st.columns(3)
-    os_in = c1.text_input("OS*")
+    
+    # Adicionado checkbox para ignorar histórico e OS
+    c1, c2, c3, c4 = st.columns([2, 2, 2, 3])
+    
+    sem_historico = c4.checkbox("🚫 Equipamento Novo (Sem histórico/OS)")
+    
+    os_in = c1.text_input("OS*", value="N/A" if sem_historico else "", disabled=sem_historico)
     serial_in = c2.text_input("IMEI*")
     resp_in = c3.text_input("Operador*")
     
@@ -67,25 +73,31 @@ with tab1:
     mod_in = c2.selectbox("Modelo*", ["-", "9502"])
 
     st.write("---")
-    st.markdown("##### ⏳ Histórico de Passagens em Campo")
     
-    for i, periodo in enumerate(st.session_state.periodos):
-        col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
-        # Datas no padrão BR (DD/MM/YYYY)
-        st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}", format="DD/MM/YYYY")
-        st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}", format="DD/MM/YYYY")
-        if len(st.session_state.periodos) > 1:
-            if col_p3.button("🗑️", key=f"del_{i}"):
-                st.session_state.periodos.pop(i)
-                st.rerun()
+    # Lógica condicional para o Histórico
+    if not sem_historico:
+        st.markdown("##### ⏳ Histórico de Passagens em Campo")
+        
+        for i, periodo in enumerate(st.session_state.periodos):
+            col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
+            st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}", format="DD/MM/YYYY")
+            st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}", format="DD/MM/YYYY")
+            if len(st.session_state.periodos) > 1:
+                if col_p3.button("🗑️", key=f"del_{i}"):
+                    st.session_state.periodos.pop(i)
+                    st.rerun()
 
-    if st.button("➕ Adicionar Passagem"):
-        st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
-        st.rerun()
+        if st.button("➕ Adicionar Passagem"):
+            st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
+            st.rerun()
 
-    dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
-    primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
-    dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
+        dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
+        primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
+        dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
+    else:
+        dias_atividade = 0
+        dias_desde_primeiro = 0
+        st.info("💡 **Aviso:** Modo 'Equipamento Novo' ativo. O histórico de campo será omitido do relatório.")
 
     c_res1, c_res2 = st.columns(2)
     c_res1.metric("Tempo desde 1º uso", f"{dias_desde_primeiro} dias")
@@ -160,7 +172,10 @@ with tab1:
         ressalvas = st.text_area("Observações Técnicas")
 
         if st.button("🚀 FINALIZAR E GERAR RELATÓRIO"):
-            if "-" in [os_in, serial_in, eth_status, sim_status, real_time, parecer]:
+            # Validação: Se não for 'sem_historico', a OS é obrigatória.
+            valid_os = True if sem_historico else (os_in.strip() != "" and os_in != "-")
+            
+            if "-" in [serial_in, eth_status, sim_status, real_time, parecer] or not valid_os:
                 st.error("🚨 Preencha todos os campos obrigatórios (*)")
             else:
                 pdf = PDF_BGAN()
@@ -180,8 +195,12 @@ with tab1:
                 pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "OPERADOR:"); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, resp_in); pdf.ln(8)
 
                 pdf.set_font('Arial', 'B', 8); pdf.set_text_color(100, 100, 100)
-                pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
-                pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1); pdf.ln(4)
+                if sem_historico:
+                    pdf.cell(190, 5, "INSTRUMENTO SEM HISTÓRICO DE INSTALAÇÃO (EQUIPAMENTO NOVO)", 0, 1)
+                else:
+                    pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
+                    pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1)
+                pdf.ln(4)
 
                 # Seção 2: Configurações
                 pdf.secao_titulo("2. CONFIGURAÇÕES INTERNAS VALIDADAS (WEBUI)")
@@ -224,3 +243,6 @@ with tab1:
                     st.download_button(label="⬇️ Baixar Relatório PDF", data=pdf_bytes, file_name=pdf_filename, mime="application/pdf")
                 except Exception as e:
                     st.error(f"Erro ao gerar PDF: {e}")
+
+with tab2:
+    st.info("Funcionalidade de histórico de banco de dados pode ser implementada aqui.")
