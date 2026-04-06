@@ -71,8 +71,9 @@ with tab1:
     
     for i, periodo in enumerate(st.session_state.periodos):
         col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
-        st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}")
-        st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}")
+        # Datas no padrão BR (DD/MM/YYYY)
+        st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}", format="DD/MM/YYYY")
+        st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}", format="DD/MM/YYYY")
         if len(st.session_state.periodos) > 1:
             if col_p3.button("🗑️", key=f"del_{i}"):
                 st.session_state.periodos.pop(i)
@@ -93,60 +94,49 @@ with tab1:
     st.divider()
     st.subheader("🛠️ Checklist de Configuração Sequencial")
 
-    # --- INÍCIO DO FLUXO EM CASCATA ---
     step_final_valid = False
 
-    # Passo 0: Modo Avião
     s0 = st.checkbox("0. Modo Avião do computador ligado?")
     if s0:
-        # Passo 1: TCP/IP
         st.markdown("---")
-        st.info("💡 **Instrução:** Conecte o cabo RJ45 e siga o caminho: Painel de Controle>Rede e Internet>Conexões de Rede ")
+        st.info("💡 **Instrução:** Conecte o Cabo RJ45 e Vá em Painel de Controle > Rede e Internet > Conexões de Rede")
         s1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
         if s1:
-            # Passo 2: WebUI
             st.markdown("---")
             st.info("🔗 **Acesse o WebUI:** http://192.168.128.100")
             s2 = st.checkbox("2. Página inicial do equipamento carregada?")
             if s2:
-                # Passo 3: Manage Contexts
                 st.markdown("---")
                 st.warning("⚙️ **Configuração:** Connections > Manage Contexts")
                 st.write("- Owner: 192.168.128.101 | Service: Standard | APN: STRATOS ou WILTD")
                 s3 = st.checkbox("3. Configurações de Contexto conferidas?")
                 if s3:
-                    # Passo 4: Automatic Contexts
                     st.markdown("---")
                     st.warning("⚙️ **Configuração:** Connections > Automatic Contexts")
                     st.write("- Static IP ACA: 1 | Enable: Off | Service: Standard")
                     s4 = st.checkbox("4. Contexto Automático conferido?")
                     if s4:
-                        # Passo 5: Ethernet
                         st.markdown("---")
                         st.warning("⚙️ **Configuração:** Settings > Ethernet")
                         st.write("- Wake On LAN: Off | Idle Timeout: 0 | Ethernet: Default")
                         s5 = st.checkbox("5. Configurações de Ethernet conferidas?")
                         if s5:
-                            # Passo 6: ATC Setup
                             st.markdown("---")
                             st.warning("⚙️ **Configuração:** Settings > ATC Setup")
                             st.write("- ATC Robustness: Off")
                             s6 = st.checkbox("6. ATC Setup conferido?")
                             if s6:
-                                # Passo 7: M2M
                                 st.markdown("---")
                                 st.warning("⚙️ **Configuração:** Settings > M2M")
                                 st.write("- Watchdog: On (8.8.8.8) | Always On: On (192.168.128.101)")
                                 s7 = st.checkbox("7. Watchdog e Always On configurados?")
                                 if s7:
-                                    # Passo 8: Security
                                     st.markdown("---")
                                     st.warning("⚙️ **Configuração:** Settings > Security")
                                     st.write("- Remote SMS Control: On | Password: remote")
                                     if st.checkbox("8. Configurações de Segurança finalizadas?"):
                                         step_final_valid = True
 
-    # --- LIBERAÇÃO DOS TESTES ---
     if step_final_valid:
         st.success("✅ Todas as configurações internas foram validadas.")
         st.divider()
@@ -176,14 +166,18 @@ with tab1:
                 pdf = PDF_BGAN()
                 pdf.add_page()
                 
-                # Seção 1
+                # --- SEÇÃO 1: IDENTIFICAÇÃO ---
                 pdf.secao_titulo("1. IDENTIFICAÇÃO E CRONOLOGIA")
                 pdf.set_font('Arial', 'B', 9)
+                
                 pdf.cell(30, 6, "DATA TESTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, get_br_now().strftime('%d/%m/%Y %H:%M'))
-                pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "OS:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, os_in); pdf.ln()
-                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "EQUIPAMENTO:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, f"{fab_in} {mod_in}")
-                pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "S/N:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, serial_in); pdf.ln()
-                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "OPERADOR:"); pdf.set_font('Arial', '', 9); pdf.cell(160, 6, resp_in); pdf.ln(8)
+                pdf.set_font('Arial', 'B', 9); pdf.cell(15, 6, "OS:"); pdf.set_font('Arial', '', 9); pdf.cell(80, 6, os_in); pdf.ln()
+                
+                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "FABRICANTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, fab_in)
+                pdf.set_font('Arial', 'B', 9); pdf.cell(20, 6, "MODELO:"); pdf.set_font('Arial', '', 9); pdf.cell(75, 6, mod_in); pdf.ln()
+                
+                pdf.set_font('Arial', 'B', 9); pdf.cell(30, 6, "S/N:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, serial_in)
+                pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "OPERADOR:"); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, resp_in); pdf.ln(8)
 
                 pdf.set_font('Arial', 'B', 8); pdf.set_text_color(100, 100, 100)
                 pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
@@ -220,9 +214,13 @@ with tab1:
                 pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0); pdf.ln(2)
                 pdf.multi_cell(0, 6, f"Observações: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
 
+                # --- NOMEAÇÃO DO ARQUIVO ---
+                data_str = get_br_now().strftime("%d-%m-%Y")
+                pdf_filename = f"{data_str}_BGAN_{serial_in}.pdf"
+
                 try:
                     pdf_output = pdf.output(dest='S')
                     pdf_bytes = bytes(pdf_output) if not isinstance(pdf_output, str) else pdf_output.encode('latin-1')
-                    st.download_button(label="⬇️ Baixar Relatório PDF", data=pdf_bytes, file_name=f"Relatorio_BGAN_{serial_in}.pdf", mime="application/pdf")
+                    st.download_button(label="⬇️ Baixar Relatório PDF", data=pdf_bytes, file_name=pdf_filename, mime="application/pdf")
                 except Exception as e:
                     st.error(f"Erro ao gerar PDF: {e}")
