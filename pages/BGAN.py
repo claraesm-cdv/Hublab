@@ -12,7 +12,7 @@ def get_br_now():
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Laboratório CDV - BGAN", page_icon="📡", layout="wide")
 
-LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
+LOGO_PATH = os.path.join(os.getcwd(), "logo1.png")
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
 if 'periodos' not in st.session_state:
@@ -54,7 +54,7 @@ class PDF_BGAN(FPDF):
 # --- INTERFACE ---
 st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
 
-tab1, tab2 = st.tabs(["📝 Teste de Campo/Bancada", "📊 Histórico"])
+tab1, tab2 = st.tabs(["📝 Verificação do equipamento", "📊 Histórico"])
 
 with tab1:
     st.subheader("1. Identificação do Terminal")
