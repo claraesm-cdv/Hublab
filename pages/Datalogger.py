@@ -102,17 +102,25 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     # 1. IDENTIFICAÇÃO
     pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
     pdf.set_font('Arial', 'B', 9)
+    
+    # Linha 1: OS e Serial
     pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["OS"]), 0)
     pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Serial:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Serial"]), 0); pdf.ln()
-    pdf.cell(25, 6, "Fabricante:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Fabricante"]), 0)
+    
+    # Linha 2: Fabricante e Modelo
+    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Fabricante:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Fabricante"]), 0)
     pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Modelo:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Modelo"]), 0); pdf.ln()
-    pdf.cell(25, 6, "Responsável:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Responsável"]), 0)
+    
+    # Linha 3: Responsável (Sozinho para evitar sobreposição)
+    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Responsável:", 0); pdf.set_font('Arial', '', 9); pdf.cell(165, 6, str(dados_id["Responsável"]), 0); pdf.ln()
+    
+    # Espaçamento para os tempos
     pdf.ln(2)
     
-    # Tempos de Uso
+    # Linha 4: Tempos de Uso (Com destaque e sem sobreposição)
     pdf.set_font('Arial', 'B', 9)
-    pdf.cell(50, 6, "Tempo desde 1º uso:", 0); pdf.set_font('Arial', '', 9); pdf.cell(45, 6, str(dados_id["Tempo_Desde_Primeiro"]), 0)
-    pdf.set_font('Arial', 'B', 9); pdf.cell(50, 6, "Tempo em atividade:", 0); pdf.set_font('Arial', '', 9); pdf.cell(45, 6, str(dados_id["Tempo_Atividade"]), 0); pdf.ln()
+    pdf.cell(40, 6, "Tempo desde 1º uso:", 0); pdf.set_font('Arial', '', 9); pdf.cell(55, 6, str(dados_id["Tempo_Desde_Primeiro"]), 0)
+    pdf.set_font('Arial', 'B', 9); pdf.cell(40, 6, "Tempo em atividade:", 0); pdf.set_font('Arial', '', 9); pdf.cell(55, 6, str(dados_id["Tempo_Atividade"]), 0); pdf.ln()
     pdf.ln(4)
     
     if ligando == "Não":
@@ -182,18 +190,14 @@ with tab1:
         st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
         st.rerun()
 
-    # --- CÁLCULO DOS TEMPOS ---
-    # 1. Tempo em Atividade (Soma dos intervalos)
+    # Cálculo dos Tempos
     dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
-    
-    # 2. Tempo desde o primeiro uso (Data atual - Primeira data de entrada registrada)
     primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
     dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
 
     c_res1, c_res2 = st.columns(2)
     c_res1.metric("Tempo desde 1º uso", f"{dias_desde_primeiro} dias")
     c_res2.metric("Tempo em atividade", f"{dias_atividade} dias")
-    # --------------------------
 
     st.divider()
     ligando = st.radio("Equipamento liga?*", ["-", "Sim", "Não"], horizontal=True)
@@ -281,7 +285,6 @@ with tab1:
                 st.success(f"✅ Relatório Gerado!")
                 st.download_button("📥 Baixar PDF", data=pdf_output, file_name=fname, mime="application/pdf")
                 
-                # Reset
                 st.session_state.inicio_sessao = get_br_now()
                 st.session_state.periodos = [{"entrada": get_br_now().date(), "saida": get_br_now().date()}]
 
