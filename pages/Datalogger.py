@@ -10,62 +10,20 @@ def get_br_now():
     return datetime.now(tz_br)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="Laboratório CDV - Avaliação BGAN", page_icon="📡", layout="wide")
 
-DB_FILE = "historico.csv"
+DB_FILE = "historico_bgan.csv"
 LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
-# Inicialização de estados
-if 'inicio_sessao' not in st.session_state:
-    st.session_state.inicio_sessao = get_br_now()
-
-if 'periodos' not in st.session_state:
-    st.session_state.periodos = [{"entrada": get_br_now().date(), "saida": get_br_now().date()}]
-
-# --- FUNÇÕES DE BANCO DE DADOS ---
-def salvar_no_historico(dados_id, parecer, ressalvas, checklist_detalhado, tempo_execucao):
-    data_geracao = get_br_now().strftime("%d/%m/%Y %H:%M:%S")
-    novo_registro = {
-        "Data do Teste": data_geracao,
-        "Duração do Teste": tempo_execucao,
-        "OS": str(dados_id.get("OS", "")),
-        "Serial": str(dados_id.get("Serial", "")),
-        "Fabricante": str(dados_id.get("Fabricante", "")),
-        "Modelo": str(dados_id.get("Modelo", "")),
-        "Responsável": str(dados_id.get("Responsável", "")),
-        "Tempo Total (Desde 1º uso)": str(dados_id.get("Tempo_Desde_Primeiro", "")),
-        "Tempo em Atividade": str(dados_id.get("Tempo_Atividade", "")),
-        "Parecer": parecer,
-        "Ressalvas": ressalvas
-    }
-    for grupo in checklist_detalhado.values():
-        novo_registro.update(grupo)
-    
-    df_novo = pd.DataFrame([novo_registro])
-    if os.path.exists(DB_FILE):
-        df_antigo = pd.read_csv(DB_FILE)
-        df_final = pd.concat([df_antigo, df_novo], ignore_index=True)
-    else:
-        df_final = df_novo
-    df_final.to_csv(DB_FILE, index=False, encoding='utf-8-sig')
-
-def excluir_registro_por_data(data_hora):
-    if os.path.exists(DB_FILE):
-        df = pd.read_csv(DB_FILE)
-        df = df[df['Data do Teste'] != data_hora]
-        df.to_csv(DB_FILE, index=False, encoding='utf-8-sig')
-        return True
-    return False
-
-# --- CLASSE PDF ---
-class PDF(FPDF):
+# --- CLASSE PDF ESTILIZADA ---
+class PDF_BGAN(FPDF):
     def header(self):
         if os.path.exists(LOGO_PATH):
             self.image(LOGO_PATH, 10, 8, 33)
         self.set_font('Arial', 'B', 14)
-        self.set_text_color(0, 107, 128)
-        self.cell(190, 10, 'RELATÓRIO DE INSPEÇÃO TÉCNICA', 0, 1, 'R')
-        self.set_draw_color(0, 180, 180)
+        self.set_text_color(0, 107, 128) # Azul Petróleo
+        self.cell(190, 10, 'RELATÓRIO DE AVALIAÇÃO TÉCNICA - BGAN', 0, 1, 'R')
+        self.set_draw_color(0, 180, 180) # Linha Turquesa
         self.line(10, 25, 200, 25)
         self.ln(12)
 
@@ -80,184 +38,149 @@ class PDF(FPDF):
     def linha_teste(self, nome, status, largura=190):
         self.set_font('Arial', '', 8)
         self.set_text_color(60, 60, 60)
-        self.cell(largura * 0.8, 5, f"  > {nome}", 0, 0, 'L')
-        status_positivos = ["OK", "Aprovado", "Cartao SD", "Cartao microSD"]
-        if status in status_positivos:
+        self.cell(largura * 0.75, 5, f"  > {nome}", 0, 0, 'L')
+        
+        status_positivos = ["OK", "Registrado", "Ativo", "Aprovado para Uso", "Sim", "Aprovado"]
+        
+        if any(pos in status for pos in status_positivos):
             self.set_text_color(0, 120, 0)
-            self.cell(largura * 0.2, 5, f"[ {status} ]", 0, 1, 'R')
+            self.cell(largura * 0.25, 5, f"[ {status} ]", 0, 1, 'R')
         else:
             self.set_text_color(200, 0, 0)
-            self.cell(largura * 0.2, 5, "[ FALHA ]", 0, 1, 'R')
+            self.cell(largura * 0.25, 5, f"[ {status} ]", 0, 1, 'R')
         self.set_text_color(0, 0, 0)
 
-def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
-    pdf = PDF()
-    pdf.set_auto_page_break(auto=True, margin=10)
-    pdf.add_page()
-    
-    data_hoje = get_br_now().strftime("%d/%m/%Y %H:%M:%S")
-    pdf.set_font('Arial', 'I', 8)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, f"Data da Inspeção: {data_hoje}", 0, 1, 'R')
-    pdf.ln(2)
-    
-    pdf.secao_titulo("1. IDENTIFICAÇÃO DO DATALOGGER")
-    pdf.set_font('Arial', 'B', 9)
-    pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["OS"]), 0)
-    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Serial:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Serial"]), 0); pdf.ln()
-    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Fabricante:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Fabricante"]), 0)
-    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Modelo:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Modelo"]), 0); pdf.ln()
-    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Responsável:", 0); pdf.set_font('Arial', '', 9); pdf.cell(165, 6, str(dados_id["Responsável"]), 0); pdf.ln()
-    pdf.ln(4)
-    
-    if ligando == "Não":
-        pdf.secao_titulo("2. STATUS DE INICIALIZAÇÃO")
-        pdf.set_font('Arial', 'B', 12); pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 10, "EQUIPAMENTO NÃO LIGA / NÃO INICIALIZA", 0, 1, 'C')
-    else:
-        pdf.secao_titulo("2. CHECKLIST DE HARDWARE E SINAIS")
-        for grupo in ["Interface Visual", "Sinais e Comunicação", "Energia"]:
-            if grupo in checklist_detalhado:
-                pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128)
-                pdf.cell(0, 6, f"Subgrupo: {grupo}", 0, 1)
-                for nome, status in checklist_detalhado[grupo].items():
-                    pdf.linha_teste(nome, status)
-                pdf.ln(2)
+# --- INTERFACE STREAMLIT ---
+st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
 
-        pdf.secao_titulo("3. MAPEAMENTO DE CANAIS DE ENTRADA")
-        y_topo = pdf.get_y()
-        pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Analógicas", 0, 1)
-        for nome, status in checklist_detalhado.get("Entradas Analógicas", {}).items():
-            pdf.linha_teste(nome, status, 92)
-        y_fim_anl = pdf.get_y()
-        
-        pdf.set_xy(108, y_topo)
-        pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Frequência", 0, 1)
-        for nome, status in checklist_detalhado.get("Entradas Frequência", {}).items():
-            pdf.set_x(108)
-            pdf.linha_teste(nome, status, 92)
-        pdf.set_y(max(y_fim_anl, pdf.get_y()) + 4)
-
-    pdf.secao_titulo("4. PARECER FINAL")
-    cor = (0, 120, 0) if parecer == "Aprovado" else (200, 0, 0)
-    pdf.set_text_color(*cor); pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 8, f"STATUS FINAL: {parecer.upper()}", 0, 1, 'C')
-    pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0)
-    pdf.multi_cell(0, 6, f"Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
-    
-    # Retorno seguro de bytes (FPDF2)
-    output = pdf.output()
-    return output if isinstance(output, bytes) else output.encode('latin1')
-
-# --- INTERFACE ---
-st.title("🧪 Laboratório CDV - Avaliação Datalogger")
-tab1, tab2 = st.tabs(["📝 Novo Checklist", "📊 Banco de Dados"])
+tab1, tab2 = st.tabs(["📝 Teste de Campo/Bancada", "📊 Histórico BGAN"])
 
 with tab1:
-    st.subheader("1. Identificação")
+    st.subheader("1. Identificação do Terminal")
     c1, c2, c3 = st.columns(3)
     os_in = c1.text_input("OS*")
-    serial_in = c1.text_input("Serial*")
-    fab_in = c2.text_input("Fabricante*")
-    mod_in = c2.text_input("Modelo*")
-    resp_in = c3.text_input("Responsável*")
-    
-    st.write("---")
-    st.markdown("##### ⏳ Histórico de Passagens")
-    
-    for i, periodo in enumerate(st.session_state.periodos):
-        col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
-        st.session_state.periodos[i]["entrada"] = col_p1.date_input(
-            f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}", format="DD/MM/YYYY"
-        )
-        st.session_state.periodos[i]["saida"] = col_p2.date_input(
-            f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}", format="DD/MM/YYYY"
-        )
-        
-        if len(st.session_state.periodos) > 1:
-            if col_p3.button("🗑️", key=f"del_{i}"):
-                st.session_state.periodos.pop(i)
-                st.rerun()
-
-    if st.button("➕ Adicionar Passagem"):
-        st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
-        st.rerun()
-
-    dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
-    primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
-    dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
-
-    c_res1, c_res2 = st.columns(2)
-    c_res1.metric("Tempo desde 1º uso", f"{dias_desde_primeiro} dias")
-    c_res2.metric("Tempo em atividade", f"{dias_atividade} dias")
+    serial_in = c1.text_input("Nº de Série (S/N)*")
+    fab_in = c2.selectbox("Fabricante*", ["-", "Hughes"])
+    mod_in = c2.selectbox("Modelo*", ["-", "9502"])
+    resp_in = c3.text_input("Operador*")
 
     st.divider()
-    ligando = st.radio("Equipamento liga?*", ["-", "Sim", "Não"], horizontal=True)
+    st.subheader("🛠️ Checklist de Configuração Sequencial")
+    st.caption("Marque cada passo concluído para liberar o próximo.")
 
-    checklist_detalhado = {}
-    parecer = "-"
-    ressalvas = ""
+    # --- FLUXO DE CHECKBOXES SEQUENCIAIS ---
+    p1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
+    
+    # Lógica simplificada de cascata para o Streamlit
+    p_final = False
+    if p1:
+        st.info("🔗 Acesse o WebUI: http://192.168.128.100")
+        if st.checkbox("2. Página inicial do equipamento carregada?"):
+            with st.expander("Passos de Configuração Interna", expanded=True):
+                c_a = st.checkbox("3. Connections > Manage Contexts (APN STRATOS/WILTD)")
+                c_b = st.checkbox("4. Connections > Automatic Contexts (Static IP ACA: 1)")
+                c_c = st.checkbox("5. Settings > Ethernet (Wake On LAN: Off)")
+                c_d = st.checkbox("6. Settings > ATC Setup (Robustness: Off)")
+                c_e = st.checkbox("7. M2M (Watchdog & Always On: Ativos)")
+                c_f = st.checkbox("8. Security (Remote SMS Control: On)")
+                
+                if all([c_a, c_b, c_c, c_d, c_e, c_f]):
+                    p_final = True
 
-    if ligando == "Sim":
-        st.subheader("2. Inspeção Detalhada")
-        with st.expander("🖥️ Interface Visual", expanded=True):
-            col_iv1, col_iv2, col_iv3 = st.columns(3)
-            leds = col_iv1.selectbox("LEDs*", ["-", "OK", "Não"])
-            disp = col_iv2.selectbox("Display*", ["-", "OK", "Não"])
-            grav = col_iv3.selectbox("Gravação Interna*", ["-", "Cartao SD", "Cartao microSD"])
-            checklist_detalhado["Interface Visual"] = {"LEDs": leds, "Display": disp, "Gravação": grav}
+    # --- LIBERAÇÃO DO FORMULÁRIO FINAL ---
+    if p_final:
+        st.divider()
+        st.success("✅ Configurações validadas. Prossiga para os testes finais.")
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.subheader("2. Qualidade de Sinal")
+            cno_nivel = st.number_input("Nível de Sinal (dBHz)", 0.0, 80.0, 0.0)
+            
+            st.subheader("3. Inspeção de Hardware")
+            eth_status = st.selectbox("Porta Ethernet*", ["-", "OK", "Danificada"])
+            sim_status = st.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
 
-        with st.expander("📡 Sinais e Comunicação"):
-            cs1, cs2, cs3, cs4 = st.columns(4)
-            gsm = cs1.selectbox("GSM*", ["-", "OK", "Não"], key="gsm")
-            gps = cs2.selectbox("GPS*", ["-", "OK", "Não"], key="gps")
-            moxa = cs3.selectbox("MOXA*", ["-", "OK", "Não"], key="moxa")
-            rt = cs4.selectbox("Real Time*", ["-", "OK", "Não"], key="rt")
-            checklist_detalhado["Sinais e Comunicação"] = {"GSM": gsm, "GPS": gps, "MOXA": moxa, "Real Time": rt}
+        with col_b:
+            st.subheader("4. Conexão com o Datalogger")
+            real_time = st.selectbox("Real Time*", ["-", "OK", "FALHA"])
+            
+            st.subheader("5. Parecer Técnico")
+            parecer = st.selectbox("Resultado Final*", ["-", "Aprovado para Uso", "Reprovado", "Aguardando Manutenção"])
+        
+        ressalvas = st.text_area("Observações Técnicas / Ressalvas")
 
-        st.subheader("3. Parecer")
-        parecer = st.selectbox("Resultado Final*", ["-", "Aprovado", "Reprovado", "Aprovado com Ressalvas"])
-        ressalvas = st.text_area("Observações")
-
-    elif ligando == "Não":
-        st.error("⚠️ Equipamento não inicializa.")
-        parecer = "Reprovado"
-        ressalvas = st.text_area("Observações Adicionais", value="Equipamento danificado e não inicializa.")
-        checklist_detalhado = {"Status": {"Geral": "FALHA"}}
-
-    if ligando != "-":
-        if st.button("🚀 FINALIZAR"):
-            if not os_in or not serial_in:
-                st.error("🚨 OS e Serial são obrigatórios!")
+        if st.button("🚀 FINALIZAR E GERAR RELATÓRIO"):
+            if "-" in [os_in, serial_in, eth_status, sim_status, real_time, parecer]:
+                st.error("🚨 Preencha todos os campos obrigatórios (*)")
             else:
-                agora_br = get_br_now()
-                duracao = agora_br - st.session_state.inicio_sessao
-                tempo_str = f"{duracao.seconds // 60:02d}:{duracao.seconds % 60:02d} min"
+                # --- GERAÇÃO DO PDF COM O NOVO ESTILO ---
+                pdf = PDF_BGAN()
+                pdf.set_auto_page_break(auto=True, margin=10)
+                pdf.add_page()
                 
-                dados_pdf = {
-                    "OS": os_in, "Serial": serial_in, "Fabricante": fab_in, 
-                    "Modelo": mod_in, "Responsável": resp_in, 
-                    "Tempo_Desde_Primeiro": f"{dias_desde_primeiro} dias",
-                    "Tempo_Atividade": f"{dias_atividade} dias"
-                }
-                
-                salvar_no_historico(dados_pdf, parecer, ressalvas, checklist_detalhado, tempo_str)
-                pdf_bytes = gerar_pdf(dados_pdf, parecer, ressalvas, checklist_detalhado, ligando)
+                # Data no topo
+                pdf.set_font('Arial', 'I', 8)
+                pdf.set_text_color(100, 100, 100)
+                pdf.cell(0, 5, f"Data da Inspeção: {get_br_now().strftime('%d/%m/%Y %H:%M:%S')}", 0, 1, 'R')
+                pdf.ln(2)
 
-                fname = f"{agora_br.strftime('%d%m%y')}_DL_{serial_in}.pdf"
-                st.success(f"✅ Relatório Gerado!")
-                st.download_button("📥 Baixar PDF", data=pdf_bytes, file_name=fname, mime="application/pdf")
-                st.session_state.inicio_sessao = get_br_now()
+                # Seção 1: Identificação
+                pdf.secao_titulo("1. IDENTIFICAÇÃO DO EQUIPAMENTO")
+                pdf.set_font('Arial', 'B', 9)
+                pdf.cell(25, 6, "OS:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, os_in, 0)
+                pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Serial:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, serial_in, 0); pdf.ln()
+                pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Fabricante:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, fab_in, 0)
+                pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Modelo:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, mod_in, 0); pdf.ln()
+                pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Operador:", 0); pdf.set_font('Arial', '', 9); pdf.cell(165, 6, resp_in, 0); pdf.ln(8)
+
+                # Seção 2: Testes
+                pdf.secao_titulo("2. CHECKLIST DE HARDWARE E SINAIS")
+                
+                # Subgrupo Sinal
+                pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128)
+                pdf.cell(0, 6, "Qualidade de Link", 0, 1)
+                pdf.linha_teste("Nível de Sinal C/No", f"{cno_nivel} dBHz")
+                pdf.ln(2)
+
+                # Subgrupo Hardware
+                pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128)
+                pdf.cell(0, 6, "Interfaces Físicas", 0, 1)
+                pdf.linha_teste("Porta Ethernet LAN", eth_status)
+                pdf.linha_teste("Slot SIM Card", sim_status)
+                pdf.ln(2)
+
+                # Subgrupo Integração
+                pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128)
+                pdf.cell(0, 6, "Comunicação", 0, 1)
+                pdf.linha_teste("Integração Datalogger (Real Time)", real_time)
+                pdf.ln(6)
+
+                # Seção 3: Parecer
+                pdf.secao_titulo("3. PARECER FINAL")
+                cor_parecer = (0, 120, 0) if parecer == "Aprovado para Uso" else (200, 0, 0)
+                pdf.set_text_color(*cor_parecer)
+                pdf.set_font('Arial', 'B', 12)
+                pdf.cell(0, 10, f"STATUS FINAL: {parecer.upper()}", 0, 1, 'C')
+                
+                pdf.set_font('Arial', 'I', 9)
+                pdf.set_text_color(0, 0, 0)
+                pdf.multi_cell(0, 6, f"Observações Técnicas: {ressalvas if ressalvas.strip() else 'Nenhuma observação adicional.'}", border=1)
+
+                # Output
+                pdf_filename = f"Relatorio_BGAN_{serial_in}.pdf"
+                pdf_output = pdf.output(dest='S') # Retorna como string/bytes dependendo da versão do fpdf
+                
+                st.download_button(
+                    label="⬇️ Baixar Relatório PDF",
+                    data=pdf_output if isinstance(pdf_output, bytes) else pdf_output.encode('latin-1'),
+                    file_name=pdf_filename,
+                    mime="application/pdf"
+                )
+                st.success("✅ Relatório gerado com sucesso!")
+
+    elif p1:
+        st.warning("⚠️ Complete todos os passos do checklist de configuração para liberar os testes de sinal e hardware.")
 
 with tab2:
-    if os.path.exists(DB_FILE):
-        df = pd.read_csv(DB_FILE)
-        st.dataframe(df, use_container_width=True)
-        st.subheader("🗑️ Apagar Registro")
-        op_del = df["Data do Teste"].tolist()
-        sel_del = st.selectbox("Selecione pela Data/Hora:", options=op_del)
-        if st.button("Confirmar Exclusão", type="primary"):
-            if excluir_registro_por_data(sel_del):
-                st.rerun()
-    else:
-        st.info("Sem dados.")
+    st.info("O histórico será listado aqui após a implementação da persistência de dados (CSV/DB).")
