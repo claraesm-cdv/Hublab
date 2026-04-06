@@ -94,7 +94,7 @@ with col_central:
         with st.container(border=True):
             st.markdown("<span style='font-size: 50px;'>📡</span>", unsafe_allow_html=True)
             st.subheader("Modem BGAN")
-            st.write("Teste de apontamento, sinal C/No e registro IP.")
+            st.write("Teste de comunicação e verificação da estrutura física")
             
             if st.button("ACESSAR SISTEMA", key="btn_bgan", use_container_width=True):
                 st.switch_page("pages/BGAN.py")
