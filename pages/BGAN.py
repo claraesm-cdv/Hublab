@@ -19,7 +19,7 @@ LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 if 'inicio_sessao' not in st.session_state:
     st.session_state.inicio_sessao = get_br_now()
 
-# --- FUNÇÕES DE PDF (RESUMO DAS ADAPTAÇÕES) ---
+# --- FUNÇÕES DE PDF ---
 class PDF_BGAN(FPDF):
     def header(self):
         if os.path.exists(LOGO_PATH):
@@ -41,7 +41,7 @@ class PDF_BGAN(FPDF):
     def linha_teste(self, nome, status):
         self.set_font('Arial', '', 9)
         self.cell(150, 6, f"  > {nome}", 0, 0)
-        if status in ["OK", "Registrado", "Ativo", "Público"]:
+        if status in ["OK", "Registrado", "Ativo", "Público", "Aprovado", "Sim"]:
             self.set_text_color(0, 120, 0)
         else:
             self.set_text_color(200, 0, 0)
@@ -58,53 +58,144 @@ with tab1:
     c1, c2, c3 = st.columns(3)
     os_in = c1.text_input("OS*")
     serial_in = c1.text_input("Nº de Série (S/N)*")
-    fab_in = c2.selectbox("Fabricante*", [ "-","Hughes"])
-    mod_in = c2.selectbox("Modelo*", [ "-","9502"])
+    fab_in = c2.selectbox("Fabricante*", ["-", "Hughes"])
+    mod_in = c2.selectbox("Modelo*", ["-", "9502"])
     resp_in = c3.text_input("Operador*")
 
-
     st.divider()
-    ligando = st.radio("O Terminal Inicializa corretamente?*", ["-", "Sim", "Não"], horizontal=True)
+    st.subheader("🛠️ Checklist de Configuração Sequencial")
+    st.caption("Marque cada passo concluído para liberar o próximo.")
 
-    if ligando == "Sim":
-        # --- ETAPA 2: APONTAMENTO E SINAL ---
+    # --- FLUXO DE CHECKBOXES SEQUENCIAIS ---
+    
+    # Passo 1
+    p1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
+
+    # Passo 2
+    p2 = False
+    if p1:
+        st.info("🔗 Acesse o WebUI: http://192.168.128.100")
+        p2 = st.checkbox("2. Página inicial do equipamento carregada?")
+
+    # Passo 3
+    p3 = False
+    if p2:
+        with st.expander("3. Connections > Manage Contexts", expanded=True):
+            st.markdown("""
+            - **Owner:** 192.168.128.101
+            - **Service:** Standard
+            - **APN 1:** STRATOS.BGAN.INMARSAT.COM (Onixtec)
+            - **APN 2:** WILTD.BGAN.INMARSAT.COM (Kintech)
+            """)
+            p3 = st.checkbox("Configurações do Passo 3 conferem?")
+
+    # Passo 4
+    p4 = False
+    if p3:
+        with st.expander("4. Connections > Automatic Contexts", expanded=True):
+            st.markdown("""
+            **Static IP ACA:** 1 | **Enable:** Off | **Service:** Standard  
+            **DHCP Automatic Contexts:** Off
+            """)
+            p4 = st.checkbox("Configurações do Passo 4 conferem?")
+
+    # Passo 5
+    p5 = False
+    if p4:
+        with st.expander("5. Settings > Ethernet", expanded=True):
+            st.markdown("""
+            **Wake On LAN:** Off | **Idle Timeout:** 0 | **UTC Time:** 0000  
+            **Ethernet Operation:** Default
+            """)
+            p5 = st.checkbox("Configurações do Passo 5 conferem?")
+
+    # Passo 6
+    p6 = False
+    if p5:
+        with st.expander("6. Settings > ATC Setup", expanded=True):
+            st.write("**ATC Robustness:** Off")
+            p6 = st.checkbox("Configurações do Passo 6 conferem?")
+
+    # Passo 7
+    p7 = False
+    if p6:
+        with st.expander("7. M2M (Watchdog & Always On)", expanded=True):
+            st.markdown("""
+            - **Context Watchdog:** On | **Ping IPs:** 8.8.8.8 / 8.8.4.4
+            - **Time between Pings:** 240
+            - **Always On Context:** On | **IP:** 192.168.128.101
+            """)
+            p7 = st.checkbox("Configurações do Passo 7 conferem?")
+
+    # Passo 8
+    p8 = False
+    if p7:
+        with st.expander("8. Security", expanded=True):
+            st.write("**Remote SMS Control:** On | **Password:** remote")
+            p8 = st.checkbox("Passo 8: Configuração Finalizada?")
+
+    # --- LIBERAÇÃO DO FORMULÁRIO FINAL ---
+    if p8:
+        st.divider()
+        st.success("✅ Configurações validadas. Prossiga para os testes de sinal.")
+        
         st.subheader("2. Qualidade de Sinal e Satélite")
         col_sig1, col_sig2, col_sig3 = st.columns(3)
-        
-        cno_nivel = col_sig1.number_input("Nível de Sinal (C/No em dBHz)", min_value=0.0, max_value=80.0, value=0.0)
+        cno_nivel = col_sig1.number_input("Nível de Sinal (C/No em dBHz)", 0.0, 80.0, 0.0)
         pointing_status = col_sig2.selectbox("Status de Apontamento*", ["-", "OK", "Sinal Instável", "Sem Visada"])
         beam_id = col_sig3.text_input("ID do Beam (Spot Beam)")
 
-        # --- ETAPA 3: CONECTIVIDADE IP ---
         st.subheader("3. Registro e Conectividade IP")
-        exp_net = st.expander("Verificações de Rede", expanded=True)
-        cn1, cn2, cn3 = exp_net.columns(3)
-        
+        cn1, cn2, cn3 = st.columns(3)
         reg_status = cn1.selectbox("Registro na Rede*", ["-", "Registrado", "Falha de Registro", "SIM Bloqueado"])
         pdp_status = cn2.selectbox("PDP Context (Dados)*", ["-", "Ativo", "Falha"])
         ip_tipo = cn3.selectbox("Tipo de IP*", ["-", "Privado", "Público", "Estático"])
-        
         latencia = st.text_input("Latência Média (Ping para 8.8.8.8) - ex: 720ms")
 
-        # --- ETAPA 4: INTERFACES FÍSICAS ---
-        st.subheader("4. Inspeção de Portas e Hardware")
-        col_hw1, col_hw2, col_hw3 = st.columns(3)
-        eth_port = col_hw1.selectbox("Porta Ethernet (RJ45)*", ["-", "OK", "Danificada"])
-        wlan_port = col_hw2.selectbox("Wi-Fi Integrado*", ["-", "OK", "Falha", "N/A"])
-        sim_slot = col_hw3.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
+        st.subheader("4. Inspeção de Hardware")
+        ch1, ch2, ch3 = st.columns(3)
+        eth_port = ch1.selectbox("Porta Ethernet*", ["-", "OK", "Danificada"])
+        wlan_port = ch2.selectbox("Wi-Fi Integrado*", ["-", "OK", "Falha", "N/A"])
+        sim_slot = ch3.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
 
-        # --- PARECER FINAL ---
         st.subheader("5. Parecer Técnico")
-        parecer = st.selectbox("Resultado Final*", ["-", "Aprovado para Uso", "Reprovado", "Aguardando Firmware/Reparo"])
-        ressalvas = st.text_area("Observações Técnicas (Ex: Necessário troca de cabo TNC, bateria viciada...)")
+        parecer = st.selectbox("Resultado Final*", ["-", "Aprovado para Uso", "Reprovado", "Aguardando Manutenção"])
+        ressalvas = st.text_area("Observações Técnicas")
 
         if st.button("🚀 FINALIZAR E GERAR RELATÓRIO"):
-            if "-" in [os_in, serial_in, parecer, reg_status]:
-                st.error("🚨 Por favor, preencha todos os campos obrigatórios (*)")
+            if "-" in [os_in, serial_in, parecer, reg_status, pointing_status]:
+                st.error("🚨 Preencha todos os campos obrigatórios (*)")
             else:
-                # Lógica de salvamento e PDF similar ao anterior...
-                st.success("Relatório de BGAN gerado com sucesso!")
-                # Aqui entraria a chamada da função gerar_pdf adaptada
+                # Geração de PDF simplificada para exemplo
+                pdf = PDF_BGAN()
+                pdf.add_page()
+                pdf.secao_titulo("DADOS DO EQUIPAMENTO")
+                pdf.set_font('Arial', '', 10)
+                pdf.cell(0, 6, f"OS: {os_in} | S/N: {serial_in} | Operador: {resp_in}", 0, 1)
                 
-    elif ligando == "Não":
-        st.error("❌ Equipamento não liga. Encaminhar para manutenção de hardware Nível 2.")
+                pdf.ln(5)
+                pdf.secao_titulo("RESULTADOS DOS TESTES")
+                pdf.linha_teste("Sinal C/No", str(cno_nivel))
+                pdf.linha_teste("Registro na Rede", reg_status)
+                pdf.linha_teste("Conectividade de Dados", pdp_status)
+                pdf.linha_teste("Porta Ethernet", eth_port)
+                
+                pdf.ln(5)
+                pdf.secao_titulo("PARECER FINAL")
+                pdf.set_font('Arial', 'B', 11)
+                pdf.cell(0, 10, f"RESULTADO: {parecer}", 0, 1)
+                pdf.set_font('Arial', 'I', 9)
+                pdf.multi_cell(0, 5, f"Obs: {ressalvas}")
+
+                pdf_output = f"Relatorio_{serial_in}.pdf"
+                pdf.output(pdf_output)
+                
+                with open(pdf_output, "rb") as f:
+                    st.download_button("⬇️ Baixar Relatório PDF", f, file_name=pdf_output)
+                st.success("Relatório gerado!")
+
+    elif p1:
+        st.warning("⚠️ Você precisa completar o Checklist de Configuração (Passos 1 a 8) para liberar o formulário de aprovação.")
+
+with tab2:
+    st.info("O histórico de testes será exibido aqui após a integração com o banco de dados/CSV.")
