@@ -42,15 +42,13 @@ class PDF_BGAN(FPDF):
         self.set_font('Arial', '', 8)
         self.set_text_color(60, 60, 60)
         self.cell(largura * 0.75, 5, f"  > {nome}", 0, 0, 'L')
-        
         status_ok = ["OK", "Registrado", "Ativo", "Aprovado", "Sim", "Configurado"]
         color = (0, 120, 0) if any(x in str(status) for x in status_ok) else (200, 0, 0)
-        
         self.set_text_color(*color)
         self.cell(largura * 0.25, 5, f"[ {status} ]", 0, 1, 'R')
         self.set_text_color(0, 0, 0)
 
-# --- INTERFACE STREAMLIT ---
+# --- INTERFACE ---
 st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
 
 tab1, tab2 = st.tabs(["📝 Teste de Campo/Bancada", "📊 Histórico"])
@@ -72,7 +70,6 @@ with tab1:
         col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
         st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}")
         st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}")
-        
         if len(st.session_state.periodos) > 1:
             if col_p3.button("🗑️", key=f"del_{i}"):
                 st.session_state.periodos.pop(i)
@@ -82,7 +79,6 @@ with tab1:
         st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
         st.rerun()
 
-    # Cálculos de tempo
     dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
     primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
     dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
@@ -92,20 +88,52 @@ with tab1:
     c_res2.metric("Tempo total em atividade", f"{dias_atividade} dias")
 
     st.divider()
-    st.subheader("🛠️ Checklist de Configuração WebUI")
-    
-    col_conf1, col_conf2 = st.columns(2)
-    with col_conf1:
-        step3 = st.checkbox("3. Manage Contexts (APN Stratos/Wiltd)")
-        step4 = st.checkbox("4. Automatic Contexts (Static IP ACA: 1)")
-        step5 = st.checkbox("5. Ethernet (Wake On LAN: Off)")
-    with col_conf2:
-        step6 = st.checkbox("6. ATC Setup (Robustness: Off)")
-        step7 = st.checkbox("7. M2M (Watchdog & Always On)")
-        step8 = st.checkbox("8. Security (Remote SMS Control)")
+    st.subheader("🛠️ Checklist de Configuração Sequencial (WebUI)")
 
-    if all([step3, step4, step5, step6, step7, step8]):
-        st.success("✅ Configurações internas validadas.")
+    # --- INÍCIO DO FLUXO SEQUENCIAL ---
+    step1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
+    
+    step_final_valid = False
+    
+    if step1:
+        st.info("🔗 Acesse o WebUI: http://192.168.128.100")
+        if st.checkbox("2. Página inicial do equipamento carregada?"):
+            
+            # Passo 3
+            st.markdown("---")
+            st.markdown("**3. Connections > Manage Contexts**")
+            st.caption("Owner: 192.168.128.101 | Service: Standard | APN: STRATOS ou WILTD")
+            if st.checkbox("Configuração do Passo 3 conferida?"):
+                
+                # Passo 4
+                st.markdown("**4. Connections > Automatic Contexts**")
+                st.caption("Static IP ACA: 1 | Enable: Off | Service: Standard")
+                if st.checkbox("Configuração do Passo 4 conferida?"):
+                    
+                    # Passo 5
+                    st.markdown("**5. Settings > Ethernet**")
+                    st.caption("Wake On LAN: Off | Idle Timeout: 0 | Ethernet: Default")
+                    if st.checkbox("Configuração do Passo 5 conferida?"):
+                        
+                        # Passo 6
+                        st.markdown("**6. Settings > ATC Setup**")
+                        st.caption("ATC Robustness: Off")
+                        if st.checkbox("Configuração do Passo 6 conferida?"):
+                            
+                            # Passo 7
+                            st.markdown("**7. M2M (Watchdog & Always On)**")
+                            st.caption("Watchdog: On (8.8.8.8) | Always On: On (192.168.128.101)")
+                            if st.checkbox("Configuração do Passo 7 conferida?"):
+                                
+                                # Passo 8
+                                st.markdown("**8. Security**")
+                                st.caption("Remote SMS Control: On | Password: remote")
+                                if st.checkbox("Configuração do Passo 8 finalizada?"):
+                                    step_final_valid = True
+
+    # --- LIBERAÇÃO DOS TESTES ---
+    if step_final_valid:
+        st.success("✅ Configurações internas validadas. Prossiga para os testes de sinal.")
         st.divider()
         st.subheader("📡 Testes de Sinal e Hardware")
         col_t1, col_t2 = st.columns(2)
@@ -113,24 +141,23 @@ with tab1:
         with col_t1:
             cno_nivel = st.number_input("Nível de Sinal (dBHz)", 0.0, 80.0, 0.0)
             eth_status = st.selectbox("Porta Ethernet*", ["-", "OK", "Danificada"])
-            
         with col_t2:
             sim_status = st.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
             real_time = st.selectbox("Real Time (Datalogger)*", ["-", "OK", "FALHA"])
         
         st.divider()
-        st.subheader("🎯 Parecer Final")
+        st.subheader("🎯 Parecer Técnico Final")
         parecer = st.selectbox("Resultado Final*", ["-", "Aprovado para Uso", "Aguardando Manutenção", "Reprovado"])
-        ressalvas = st.text_area("Observações Técnicas / Ressalvas")
+        ressalvas = st.text_area("Observações Técnicas")
 
-        if st.button("🚀 FINALIZAR E GERAR RELATÓRIO"):
+        if st.button("🚀 GERAR RELATÓRIO PDF"):
             if "-" in [os_in, serial_in, eth_status, sim_status, real_time, parecer]:
                 st.error("🚨 Preencha todos os campos obrigatórios (*)")
             else:
                 pdf = PDF_BGAN()
                 pdf.add_page()
                 
-                # --- SEÇÃO 1: IDENTIFICAÇÃO E CRONOLOGIA ---
+                # Seção 1
                 pdf.secao_titulo("1. IDENTIFICAÇÃO E CRONOLOGIA")
                 pdf.set_font('Arial', 'B', 9)
                 pdf.cell(30, 6, "DATA TESTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, get_br_now().strftime('%d/%m/%Y %H:%M'), 0)
@@ -143,17 +170,16 @@ with tab1:
                 pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
                 pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1); pdf.ln(4)
 
-                # --- SEÇÃO 2: CHECKLIST DE CONFIGURAÇÃO ---
-                pdf.secao_titulo("2. CHECKLIST DE CONFIGURAÇÃO INTERNA (WEBUI)")
-                pdf.linha_teste("Passo 3: Manage Contexts (APN/Owner)", "Configurado")
-                pdf.linha_teste("Passo 4: Automatic Contexts (Static IP ACA)", "Configurado")
-                pdf.linha_teste("Passo 5: Ethernet (Wake On LAN/Timeout)", "Configurado")
-                pdf.linha_teste("Passo 6: ATC Setup (Robustness Off)", "Configurado")
-                pdf.linha_teste("Passo 7: M2M (Watchdog/Always On)", "Configurado")
-                pdf.linha_teste("Passo 8: Security (Remote SMS Control)", "Configurado")
+                # Seção 2: Checklist (Aparece como "Configurado" no PDF)
+                pdf.secao_titulo("2. CONFIGURAÇÕES INTERNAS VALIDADAS")
+                pdf.linha_teste("Connections > Manage Contexts", "Configurado")
+                pdf.linha_teste("Connections > Automatic Contexts", "Configurado")
+                pdf.linha_teste("Settings > Ethernet / ATC Setup", "Configurado")
+                pdf.linha_teste("M2M Setup (Watchdog/Always On)", "Configurado")
+                pdf.linha_teste("Security (Remote SMS Control)", "Configurado")
                 pdf.ln(4)
 
-                # --- SEÇÃO 3: RESULTADOS DOS TESTES ---
+                # Seção 3: Testes Técnicos
                 pdf.secao_titulo("3. RESULTADOS DOS TESTES TÉCNICOS")
                 pdf.linha_teste("Nível de Sinal (C/No)", f"{cno_nivel} dBHz")
                 pdf.linha_teste("Integridade da Porta Ethernet LAN", eth_status)
@@ -161,11 +187,11 @@ with tab1:
                 pdf.linha_teste("Comunicação Real Time com Datalogger", real_time)
                 pdf.ln(6)
 
-                # --- SEÇÃO 4: PARECER FINAL ---
+                # Seção 4: Parecer Final (Cores Dinâmicas)
                 pdf.secao_titulo("4. PARECER TÉCNICO FINAL")
-                if parecer == "Aprovado para Uso": cor_status = (0, 107, 128)
-                elif parecer == "Aguardando Manutenção": cor_status = (255, 140, 0)
-                else: cor_status = (200, 0, 0)
+                if parecer == "Aprovado para Uso": cor_status = (0, 107, 128) # Azul
+                elif parecer == "Aguardando Manutenção": cor_status = (255, 140, 0) # Laranja
+                else: cor_status = (200, 0, 0) # Vermelho
                 
                 pdf.set_text_color(*cor_status); pdf.set_font('Arial', 'B', 14)
                 pdf.cell(0, 10, f"STATUS FINAL: {parecer.upper()}", 0, 1, 'C')
