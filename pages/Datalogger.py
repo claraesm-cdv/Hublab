@@ -297,4 +297,4 @@ with tab2:
     else:
         st.info("Sem dados.")
 
-AJUSTA PARA QUE O PDF MANTENHA O PADRÃO IGUAL A ESSE
+
