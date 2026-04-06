@@ -102,7 +102,7 @@ with col_central:
     st.markdown("""
         <div class="app-card">
             <span style='font-size: 50px;'>📡</span>
-            <h2 style='color: #333; margin-top: 15px; margin-bottom: 5px;'>Módulo Datalogger</h2>
+            <h2 style='color: #333; margin-top: 15px; margin-bottom: 5px;'>Datalogger</h2>
             <p style='color: #666; font-size: 1rem; line-height: 1.5;'>
                 Ambiente restrito para inspeção de hardware, verificação de conectividade e emissão de pareceres técnicos.
             </p>
@@ -122,7 +122,7 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("""
     <div style='text-align: center; border-top: 1px solid #ddd; padding-top: 20px;'>
         <p style='color: #888; font-size: 0.9rem; margin-bottom: 0;'>
-            © 2024 Laboratório CDV | Departamento de Manutenção e Ativos
+            © 2024 Laboratório CDV | Avaliação de Manutenção
         </p>
         <p style='color: #bbb; font-size: 0.8rem;'>Uso restrito e autorizado.</p>
     </div>
