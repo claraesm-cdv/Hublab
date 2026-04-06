@@ -97,7 +97,7 @@ with tab1:
     else:
         dias_atividade = 0
         dias_desde_primeiro = 0
-        st.info("💡 **Aviso:** Modo 'Equipamento Novo' ativo. O histórico de campo será omitido do relatório.")
+        st.info("💡 **Aviso:** Equipamento sem histórico registrado")
 
     c_res1, c_res2 = st.columns(2)
     c_res1.metric("Tempo desde 1º uso", f"{dias_desde_primeiro} dias")
@@ -196,7 +196,7 @@ with tab1:
 
                 pdf.set_font('Arial', 'B', 8); pdf.set_text_color(100, 100, 100)
                 if sem_historico:
-                    pdf.cell(190, 5, "INSTRUMENTO SEM HISTÓRICO DE INSTALAÇÃO (EQUIPAMENTO NOVO)", 0, 1)
+                    pdf.cell(190, 5, "INSTRUMENTO SEM HISTÓRICO DE INSTALAÇÃO ", 0, 1)
                 else:
                     pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
                     pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1)
