@@ -140,24 +140,20 @@ with tab1:
         st.success("✅ Configurações validadas. Prossiga para os testes de sinal.")
         
         st.subheader("2. Qualidade de Sinal e Satélite")
-        col_sig1, col_sig2, col_sig3 = st.columns(3)
-        cno_nivel = col_sig1.number_input("Nível de Sinal (C/No em dBHz)", 0.0, 80.0, 0.0)
-        pointing_status = col_sig2.selectbox("Status de Apontamento*", ["-", "OK", "Sinal Instável", "Sem Visada"])
-        beam_id = col_sig3.text_input("ID do Beam (Spot Beam)")
+        col_sig1 = st.columns(1)
+        cno_nivel = col_sig1.number_input("Nível de Sinal (dBHz)", 0.0, 80.0, 0.0)
+    
 
-        st.subheader("3. Registro e Conectividade IP")
-        cn1, cn2, cn3 = st.columns(3)
-        reg_status = cn1.selectbox("Registro na Rede*", ["-", "Registrado", "Falha de Registro", "SIM Bloqueado"])
-        pdp_status = cn2.selectbox("PDP Context (Dados)*", ["-", "Ativo", "Falha"])
-        ip_tipo = cn3.selectbox("Tipo de IP*", ["-", "Privado", "Público", "Estático"])
-        latencia = st.text_input("Latência Média (Ping para 8.8.8.8) - ex: 720ms")
-
-        st.subheader("4. Inspeção de Hardware")
-        ch1, ch2, ch3 = st.columns(3)
+        st.subheader("3. Inspeção de Hardware")
+        ch1, ch2 = st.columns(2)
         eth_port = ch1.selectbox("Porta Ethernet*", ["-", "OK", "Danificada"])
-        wlan_port = ch2.selectbox("Wi-Fi Integrado*", ["-", "OK", "Falha", "N/A"])
-        sim_slot = ch3.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
+        sim_slot = ch2.selectbox("Slot SIM Card*", ["-", "OK", "Mau Contato"])
 
+
+        st.subheader("3. Conexão com o Datalogger")
+        ch1= st.columns(1)
+        eth_port = ch1.selectbox("Real Time*", ["-", "OK", "FALHA"])
+        
         st.subheader("5. Parecer Técnico")
         parecer = st.selectbox("Resultado Final*", ["-", "Aprovado para Uso", "Reprovado", "Aguardando Manutenção"])
         ressalvas = st.text_area("Observações Técnicas")
