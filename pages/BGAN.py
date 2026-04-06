@@ -101,7 +101,7 @@ with tab1:
     if s0:
         # Passo 1: TCP/IP
         st.markdown("---")
-        st.info("💡 **Instrução:** Vá em Central de Rede > Alterar Opções do Adaptador > Ethernet > Propriedades > Protocolo IP Versão 4.")
+        st.info("💡 **Instrução:** Conecte o cabo RJ45 e siga o caminho: Painel de Controle>Rede e Internet>Conexões de Rede ")
         s1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
         if s1:
             # Passo 2: WebUI
