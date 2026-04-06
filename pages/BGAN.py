@@ -24,9 +24,9 @@ class PDF_BGAN(FPDF):
         if os.path.exists(LOGO_PATH):
             self.image(LOGO_PATH, 10, 8, 33)
         self.set_font('Arial', 'B', 14)
-        self.set_text_color(0, 107, 128) 
+        self.set_text_color(0, 107, 128) # Azul Petróleo
         self.cell(190, 10, 'RELATÓRIO DE AVALIAÇÃO TÉCNICA - BGAN', 0, 1, 'R')
-        self.set_draw_color(0, 180, 180) 
+        self.set_draw_color(0, 180, 180) # Linha Turquesa
         self.line(10, 25, 200, 25)
         self.ln(12)
 
@@ -51,7 +51,7 @@ class PDF_BGAN(FPDF):
 # --- INTERFACE ---
 st.title("📡 Laboratório CDV - Avaliação Modem BGAN")
 
-tab1, tab2 = st.tabs(["📝 Teste de Campo/Bancada", "📊 Histórico"])
+tab1, tab2 = st.tabs(["📝 Teste de Validação", "📊 Histórico"])
 
 with tab1:
     st.subheader("1. Identificação do Terminal")
@@ -79,6 +79,7 @@ with tab1:
         st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
         st.rerun()
 
+    # Cálculos de tempo
     dias_atividade = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
     primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
     dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
@@ -90,7 +91,7 @@ with tab1:
     st.divider()
     st.subheader("🛠️ Checklist de Configuração Sequencial (WebUI)")
 
-    # --- INÍCIO DO FLUXO SEQUENCIAL ---
+    # --- LÓGICA DE CASCATA ---
     step1 = st.checkbox("1. Protocolo TCP/IP: IP e DNS em modo automático?")
     
     step_final_valid = False
@@ -98,34 +99,22 @@ with tab1:
     if step1:
         st.info("🔗 Acesse o WebUI: http://192.168.128.100")
         if st.checkbox("2. Página inicial do equipamento carregada?"):
-            
-            # Passo 3
             st.markdown("---")
             st.markdown("**3. Connections > Manage Contexts**")
             st.caption("Owner: 192.168.128.101 | Service: Standard | APN: STRATOS ou WILTD")
             if st.checkbox("Configuração do Passo 3 conferida?"):
-                
-                # Passo 4
                 st.markdown("**4. Connections > Automatic Contexts**")
                 st.caption("Static IP ACA: 1 | Enable: Off | Service: Standard")
                 if st.checkbox("Configuração do Passo 4 conferida?"):
-                    
-                    # Passo 5
                     st.markdown("**5. Settings > Ethernet**")
                     st.caption("Wake On LAN: Off | Idle Timeout: 0 | Ethernet: Default")
                     if st.checkbox("Configuração do Passo 5 conferida?"):
-                        
-                        # Passo 6
                         st.markdown("**6. Settings > ATC Setup**")
                         st.caption("ATC Robustness: Off")
                         if st.checkbox("Configuração do Passo 6 conferida?"):
-                            
-                            # Passo 7
                             st.markdown("**7. M2M (Watchdog & Always On)**")
                             st.caption("Watchdog: On (8.8.8.8) | Always On: On (192.168.128.101)")
                             if st.checkbox("Configuração do Passo 7 conferida?"):
-                                
-                                # Passo 8
                                 st.markdown("**8. Security**")
                                 st.caption("Remote SMS Control: On | Password: remote")
                                 if st.checkbox("Configuração do Passo 8 finalizada?"):
@@ -133,7 +122,7 @@ with tab1:
 
     # --- LIBERAÇÃO DOS TESTES ---
     if step_final_valid:
-        st.success("✅ Configurações internas validadas. Prossiga para os testes de sinal.")
+        st.success("✅ Configurações internas validadas.")
         st.divider()
         st.subheader("📡 Testes de Sinal e Hardware")
         col_t1, col_t2 = st.columns(2)
@@ -150,14 +139,14 @@ with tab1:
         parecer = st.selectbox("Resultado Final*", ["-", "Aprovado para Uso", "Aguardando Manutenção", "Reprovado"])
         ressalvas = st.text_area("Observações Técnicas")
 
-        if st.button("🚀 GERAR RELATÓRIO PDF"):
+        if st.button("🚀 FINALIZAR E GERAR RELATÓRIO"):
             if "-" in [os_in, serial_in, eth_status, sim_status, real_time, parecer]:
                 st.error("🚨 Preencha todos os campos obrigatórios (*)")
             else:
                 pdf = PDF_BGAN()
                 pdf.add_page()
                 
-                # Seção 1
+                # Seção 1: Identificação (Limpa)
                 pdf.secao_titulo("1. IDENTIFICAÇÃO E CRONOLOGIA")
                 pdf.set_font('Arial', 'B', 9)
                 pdf.cell(30, 6, "DATA TESTE:"); pdf.set_font('Arial', '', 9); pdf.cell(65, 6, get_br_now().strftime('%d/%m/%Y %H:%M'), 0)
@@ -170,16 +159,15 @@ with tab1:
                 pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
                 pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1); pdf.ln(4)
 
-                # Seção 2: Checklist (Aparece como "Configurado" no PDF)
-                pdf.secao_titulo("2. CONFIGURAÇÕES INTERNAS VALIDADAS")
-                pdf.linha_teste("Connections > Manage Contexts", "Configurado")
-                pdf.linha_teste("Connections > Automatic Contexts", "Configurado")
-                pdf.linha_teste("Settings > Ethernet / ATC Setup", "Configurado")
-                pdf.linha_teste("M2M Setup (Watchdog/Always On)", "Configurado")
+                # Seção 2: Configuração
+                pdf.secao_titulo("2. CONFIGURAÇÕES INTERNAS VALIDADAS (WEBUI)")
+                pdf.linha_teste("Connections (Manage/Automatic Contexts)", "Configurado")
+                pdf.linha_teste("Ethernet Setup & ATC Robustness", "Configurado")
+                pdf.linha_teste("M2M Setup (Watchdog / Always On)", "Configurado")
                 pdf.linha_teste("Security (Remote SMS Control)", "Configurado")
                 pdf.ln(4)
 
-                # Seção 3: Testes Técnicos
+                # Seção 3: Testes Técnicos (Lista Única)
                 pdf.secao_titulo("3. RESULTADOS DOS TESTES TÉCNICOS")
                 pdf.linha_teste("Nível de Sinal (C/No)", f"{cno_nivel} dBHz")
                 pdf.linha_teste("Integridade da Porta Ethernet LAN", eth_status)
@@ -198,10 +186,22 @@ with tab1:
                 pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0); pdf.ln(2)
                 pdf.multi_cell(0, 6, f"Observações: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
 
-                pdf_output = pdf.output(dest='S')
-                st.download_button(
-                    label="⬇️ Baixar Relatório PDF",
-                    data=pdf_output if isinstance(pdf_output, bytes) else pdf_output.encode('latin-1'),
-                    file_name=f"Relatorio_BGAN_{serial_in}.pdf",
-                    mime="application/pdf"
-                )
+                # --- GERAÇÃO SEGURA DO PDF (Resolvendo o AttributeError) ---
+                try:
+                    pdf_output = pdf.output(dest='S')
+                    if isinstance(pdf_output, str):
+                        pdf_bytes = pdf_output.encode('latin-1')
+                    else:
+                        pdf_bytes = bytes(pdf_output)
+                    
+                    st.download_button(
+                        label="⬇️ Baixar Relatório PDF",
+                        data=pdf_bytes,
+                        file_name=f"Relatorio_BGAN_{serial_in}.pdf",
+                        mime="application/pdf"
+                    )
+                except Exception as e:
+                    st.error(f"Erro ao processar o PDF: {e}")
+
+with tab2:
+    st.info("O histórico de passagens será implementado via integração com banco de dados ou CSV.")
