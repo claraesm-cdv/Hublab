@@ -14,8 +14,12 @@ st.set_page_config(page_title="Laboratório CDV - Avaliação Datalogger", page_
 DB_FILE = "historico.csv"
 LOGO_PATH = os.path.join(os.getcwd(), "logo.png")
 
+# Inicialização do Session State
 if 'inicio_sessao' not in st.session_state:
     st.session_state.inicio_sessao = get_br_now()
+
+if 'periodos' not in st.session_state:
+    st.session_state.periodos = [{"entrada": get_br_now().date(), "saida": get_br_now().date()}]
 
 # --- FUNÇÕES DE BANCO DE DADOS ---
 def salvar_no_historico(dados_id, parecer, ressalvas, checklist_detalhado, tempo_execucao):
@@ -89,7 +93,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
     
-    # Data corrigida (Brasília)
     data_hoje = get_br_now().strftime("%d/%m/%Y %H:%M:%S")
     pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(100, 100, 100)
@@ -104,7 +107,7 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.cell(25, 6, "Fabricante:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Fabricante"]), 0)
     pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Modelo:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Modelo"]), 0); pdf.ln()
     pdf.cell(25, 6, "Responsável:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Responsável"]), 0)
-    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Uso:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Uso"]), 0); pdf.ln()
+    pdf.set_font('Arial', 'B', 9); pdf.cell(25, 6, "Uso Total:", 0); pdf.set_font('Arial', '', 9); pdf.cell(70, 6, str(dados_id["Uso"]), 0); pdf.ln()
     pdf.ln(4)
     
     if ligando == "Não":
@@ -112,7 +115,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
         pdf.set_font('Arial', 'B', 12); pdf.set_text_color(200, 0, 0)
         pdf.cell(0, 10, "EQUIPAMENTO NÃO LIGA / NÃO INICIALIZA", 0, 1, 'C')
     else:
-        # 2. CHECKLIST GERAL
         pdf.secao_titulo("2. CHECKLIST DE HARDWARE E SINAIS")
         for grupo in ["Interface Visual", "Sinais e Comunicação", "Energia"]:
             if grupo in checklist_detalhado:
@@ -122,17 +124,13 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
                     pdf.linha_teste(nome, status)
                 pdf.ln(2)
 
-        # 3. MAPEAMENTO DE CANAIS (Restaurado)
         pdf.secao_titulo("3. MAPEAMENTO DE CANAIS DE ENTRADA")
         y_topo = pdf.get_y()
-        
-        # Coluna Analógicas
         pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Analógicas", 0, 1)
         for nome, status in checklist_detalhado.get("Entradas Analógicas", {}).items():
             pdf.linha_teste(nome, status, 92)
         y_fim_anl = pdf.get_y()
         
-        # Coluna Frequência
         pdf.set_xy(108, y_topo)
         pdf.set_font('Arial', 'B', 8); pdf.set_text_color(0, 107, 128); pdf.cell(95, 5, "Frequência", 0, 1)
         for nome, status in checklist_detalhado.get("Entradas Frequência", {}).items():
@@ -140,7 +138,6 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
             pdf.linha_teste(nome, status, 92)
         pdf.set_y(max(y_fim_anl, pdf.get_y()) + 4)
 
-    # 4. PARECER
     pdf.secao_titulo("4. PARECER FINAL")
     cor = (0, 120, 0) if parecer == "Aprovado" else (200, 0, 0)
     pdf.set_text_color(*cor); pdf.set_font('Arial', 'B', 12)
@@ -163,11 +160,29 @@ with tab1:
     mod_in = c2.text_input("Modelo*")
     resp_in = c3.text_input("Responsável*")
     
-    c_dat1, c_dat2 = c3.columns(2)
-    d_ini = c_dat1.date_input("Entrada", value=get_br_now())
-    d_fim = c_dat2.date_input("Saída", value=get_br_now())
-    dias_calc = (d_fim - d_ini).days
-    st.info(f"⏳ **Permanência:** {dias_calc} dias")
+    # --- NOVA LÓGICA DE DATAS (SOMA DE PERÍODOS) ---
+    st.write("---")
+    st.markdown("##### ⏳ Histórico de Permanência")
+    
+    # Renderiza os campos de data dinamicamente
+    for i, periodo in enumerate(st.session_state.periodos):
+        col_p1, col_p2, col_p3 = st.columns([4, 4, 1])
+        st.session_state.periodos[i]["entrada"] = col_p1.date_input(f"Entrada {i+1}", value=periodo["entrada"], key=f"ent_{i}")
+        st.session_state.periodos[i]["saida"] = col_p2.date_input(f"Saída {i+1}", value=periodo["saida"], key=f"sai_{i}")
+        
+        if len(st.session_state.periodos) > 1:
+            if col_p3.button("🗑️", key=f"del_{i}"):
+                st.session_state.periodos.pop(i)
+                st.rerun()
+
+    if st.button("➕ Adicionar Passagem"):
+        st.session_state.periodos.append({"entrada": get_br_now().date(), "saida": get_br_now().date()})
+        st.rerun()
+
+    # Cálculo da soma total
+    dias_calc = sum([(p["saida"] - p["entrada"]).days for p in st.session_state.periodos])
+    st.info(f"📅 **Permanência Total:** {dias_calc} dias")
+    # -----------------------------------------------
 
     st.divider()
     ligando = st.radio("Equipamento liga?*", ["-", "Sim", "Não"], horizontal=True)
@@ -205,7 +220,7 @@ with tab1:
             with st.expander("🛠️ Analógicas"):
                 st_anl = {}
                 cols_an = st.columns(3)
-                for i in range(1, 16):
+                for i in range(1, 17): # Ajustado para 16 canais conforme loop original
                     st_anl[f"ANL {i}"] = "OK" if cols_an[(i-1)%3].checkbox(f"ANL {i}", value=True, key=f"an_{i}") else "FALHA"
                 checklist_detalhado["Entradas Analógicas"] = st_anl
         with cio2:
@@ -252,7 +267,9 @@ with tab1:
                     file_name=fname,
                     mime="application/pdf"
                 )
+                # Resetar a sessão de datas e início de tempo para o próximo
                 st.session_state.inicio_sessao = get_br_now()
+                st.session_state.periodos = [{"entrada": get_br_now().date(), "saida": get_br_now().date()}]
 
 with tab2:
     if os.path.exists(DB_FILE):
