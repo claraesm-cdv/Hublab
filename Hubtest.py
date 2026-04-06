@@ -113,7 +113,7 @@ with col_central:
     # Botão de Acesso
     if st.button("🚀 INICIAR OPERAÇÃO"):
         try:
-            st.switch_page("pages/Datalogger.py")
+            st.switch_page('pages/Datalogger.py')
         except:
             st.error("ERRO: O módulo 'pages/Datalogger.py' não foi encontrado.")
 
