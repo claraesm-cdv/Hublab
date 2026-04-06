@@ -95,4 +95,4 @@ with col_central:
             st.info("Verifique se a estrutura no seu repositório está: Hublab/pages/Datalogger.py")
 
 # 5. Rodapé
-st.markdown("<br><br><p style='text-align: center; color: #888;'>© 2024 Laboratório CDV</p>", unsafe_allow_html=True)
+st.markdown("<br><br><p style='text-align: center; color: #888;'>© 2026 Laboratório CDV</p>", unsafe_allow_html=True)
