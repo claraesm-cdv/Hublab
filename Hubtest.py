@@ -71,35 +71,6 @@ st.markdown("""
         <div style="width: 60px; height: 3px; background-color: #00b4b4; margin: 15px auto;"></div>
     </div>
 """, unsafe_allow_html=True)
-# --- ADICIONE ESTE CSS EXTRA NO SEU BLOCO DE STYLE ---
-# Este CSS faz com que o botão preencha o card e pareça parte dele
-st.markdown("""
-    <style>
-    .card-container {
-        position: relative;
-        height: 250px; /* Altura fixa para alinhar os cards */
-    }
-    
-    /* Esconde o design padrão do botão e o expande */
-    .stButton > button {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100% !important;
-        height: 100% !important;
-        background-color: transparent !important;
-        border: none !important;
-        color: transparent !important;
-        z-index: 10;
-    }
-
-    .stButton > button:hover {
-        background-color: rgba(0, 107, 128, 0.05) !important; /* Leve destaque no hover */
-        border: 2px solid #00b4b4 !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 # 4. Miolo Central
 col_esq, col_central, col_dir = st.columns([0.5, 2, 0.5])
 
@@ -108,33 +79,47 @@ with col_central:
 
     # --- CARD DATALOGGER ---
     with c1:
-        st.markdown("""
-            <div class="card-container">
-                <div class="app-card" style="height: 100%;">
-                    <span style='font-size: 50px;'>📊</span>
-                    <h2 style='color: #333; margin-top: 15px;'>Datalogger</h2>
-                    <p style='color: #666;'>Inspeção de canais, sensores e telemetria.</p>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # O botão fica invisível por cima de todo o HTML acima
-        if st.button("Abrir Datalogger", key="btn_dl"):
-            st.switch_page("pages/Datalogger.py")
+        # Criamos um container com borda que visualmente parece o card
+        with st.container(border=True):
+            st.markdown("<span style='font-size: 50px;'>📊</span>", unsafe_allow_html=True)
+            st.subheader("Datalogger")
+            st.write("Inspeção de canais, sensores e telemetria.")
+            
+            # O botão agora é um "Full Width" que encosta nas bordas
+            if st.button("ACESSAR SISTEMA", key="btn_dl", use_container_width=True):
+                st.switch_page("pages/Datalogger.py")
 
     # --- CARD MODEM BGAN ---
     with c2:
-        st.markdown("""
-            <div class="card-container">
-                <div class="app-card" style="height: 100%;">
-                    <span style='font-size: 50px;'>📡</span>
-                    <h2 style='color: #333; margin-top: 15px;'>Modem BGAN</h2>
-                    <p style='color: #666;'>Teste de apontamento, sinal C/No e registro IP.</p>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        if st.button("Abrir BGAN", key="btn_bgan"):
-            st.switch_page("pages/BGAN.py")
+        with st.container(border=True):
+            st.markdown("<span style='font-size: 50px;'>📡</span>", unsafe_allow_html=True)
+            st.subheader("Modem BGAN")
+            st.write("Teste de apontamento, sinal C/No e registro IP.")
+            
+            if st.button("ACESSAR SISTEMA", key="btn_bgan", use_container_width=True):
+                st.switch_page("pages/BGAN.py")
+
+# --- AJUSTE O CSS PARA O CONTAINER FICAR BONITO ---
+st.markdown("""
+    <style>
+    /* Estiliza o container do Streamlit para parecer o seu card */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: white !important;
+        border-top: 5px solid #006b80 !important;
+        border-radius: 15px !important;
+        transition: transform 0.3s ease;
+        padding: 20px !important;
+    }
+    
+    [data-testid="stVerticalBlockBorderWrapper"]:hover {
+        transform: translateY(-5px);
+        box-shadow: 0px 10px 20px rgba(0,0,0,0.1);
+    }
+
+    /* Ajuste para o texto não ficar colado */
+    .stMarkdown h2 { margin-top: 10px !important; }
+    </style>
+""", unsafe_allow_html=True)
+
 # 5. Rodapé
 st.markdown("<br><br><p style='text-align: center; color: #888;'>© 2026 Laboratório CDV</p>", unsafe_allow_html=True)
