@@ -173,6 +173,8 @@ with tab1:
                                     st.warning("⚙️ **Configuração:** Settings > Security")
                                     st.write("- Remote SMS Control: On | Password: remote")
                                     if st.checkbox("8. Configurações de Segurança finalizadas?"):
+                                        st.markdown("---")
+                                        st.warning(" 🚨 Desconete o computador do modem e retire-o do modo avião ")
                                         step_final_valid = True
 
     if step_final_valid:
