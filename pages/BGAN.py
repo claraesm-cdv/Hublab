@@ -86,7 +86,7 @@ with tab1:
     
     c1, c2, c3, c4 = st.columns([2, 2, 2, 3])
     
-    sem_historico = c4.checkbox("🚫 Equipamento Novo (Sem histórico/OS)")
+    sem_historico = c4.checkbox("🚫 Equipamento sem histórico/OS")
     
     os_in = c1.text_input("OS*", value="N/A" if sem_historico else "", disabled=sem_historico)
     serial_in = c2.text_input("IMEI*")
@@ -122,7 +122,7 @@ with tab1:
             primeira_entrada = min([p["entrada"] for p in st.session_state.periodos])
             dias_desde_primeiro = (get_br_now().date() - primeira_entrada).days
     else:
-        st.info("💡 **Aviso:** Modo 'Equipamento Novo' ativo. O histórico de campo será omitido do relatório.")
+        st.info("💡 **Aviso:** Equipamento não possui histórico de instalação. O histórico de campo será omitido do relatório.")
 
     # Exibição das métricas (Exatamente como no original)
     c_res1, c_res2 = st.columns(2)
@@ -160,17 +160,17 @@ with tab1:
                         s5 = st.checkbox("5. Configurações de Ethernet conferidas?")
                         if s5:
                             st.markdown("---")
-                            st.warning("⚙️ **Configuração:** Settings > ATC Setup")
+                            st.warning("⚙️ **Configuração:** ATC Setup")
                             st.write("- ATC Robustness: Off")
                             s6 = st.checkbox("6. ATC Setup conferido?")
                             if s6:
                                 st.markdown("---")
-                                st.warning("⚙️ **Configuração:** Settings > M2M")
-                                st.write("- Watchdog: On (8.8.8.8) | Always On: On (192.168.128.101)")
+                                st.warning("⚙️ **Configuração:** M2M")
+                                st.write("- Watchdog: On; (8.8.8.8); | Always On: On; (192.168.128.101);")
                                 s7 = st.checkbox("7. Watchdog e Always On configurados?")
                                 if s7:
                                     st.markdown("---")
-                                    st.warning("⚙️ **Configuração:** Settings > Security")
+                                    st.warning("⚙️ **Configuração:**  Security")
                                     st.write("- Remote SMS Control: On | Password: remote")
                                     if st.checkbox("8. Configurações de Segurança finalizadas?"):
                                         st.markdown("---")
@@ -224,7 +224,7 @@ with tab1:
 
                 pdf.set_font('Arial', 'B', 8); pdf.set_text_color(100, 100, 100)
                 if sem_historico:
-                    pdf.cell(190, 5, "INSTRUMENTO SEM HISTÓRICO DE INSTALAÇÃO (EQUIPAMENTO NOVO)", 0, 1)
+                    pdf.cell(190, 5, "INSTRUMENTO SEM HISTÓRICO DE INSTALAÇÃO", 0, 1)
                 else:
                     pdf.cell(95, 5, f"TEMPO DESDE O PRIMEIRO USO: {dias_desde_primeiro} dias", 0, 0)
                     pdf.cell(95, 5, f"TEMPO TOTAL EM ATIVIDADE EM CAMPO: {dias_atividade} dias", 0, 1)
