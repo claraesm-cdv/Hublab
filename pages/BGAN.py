@@ -174,7 +174,7 @@ with tab1:
                                     st.write("- Remote SMS Control: On | Password: remote")
                                     if st.checkbox("8. Configurações de Segurança finalizadas?"):
                                         st.markdown("---")
-                                        st.warning(" 🚨 Desconete o computador do modem e retire-o do modo avião ")
+                                        st.warning(" 🚨 Desconete o modem BGAN do computador, conecte-o ao MOXA e retire o computador do modo avião ")
                                         step_final_valid = True
 
     if step_final_valid:
