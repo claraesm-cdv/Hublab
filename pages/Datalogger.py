@@ -162,10 +162,10 @@ with tab1:
     serial_in = c1.text_input("Serial*")
 
     # --- LISTAS SUSPENSAS ATUALIZADAS ---
-    lista_fabricantes = ["-", "Kintech", "Campbell Scientific", "Ammonit", "NRG Systems", "Vaisala"]
+    lista_fabricantes = ["-", "Kintech"]
     fab_in = c2.selectbox("Fabricante*", options=lista_fabricantes, index=1) # Padrão: Kintech
 
-    lista_modelos = ["-", "Orbit 360", "E-Log", "CR1000X", "Meteo-40", "SymphoniePRO"]
+    lista_modelos = ["-", "Orbit 360"]
     mod_in = c2.selectbox("Modelo*", options=lista_modelos, index=1) # Padrão: Orbit 360
     
     resp_in = c3.text_input("Responsável*")
