@@ -149,7 +149,7 @@ def gerar_pdf(dados_id, parecer, ressalvas, checklist_detalhado, ligando):
     pdf.set_font('Arial', 'I', 9); pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, f"Ressalvas: {ressalvas if ressalvas.strip() else 'Nenhuma.'}", border=1)
     
-    return pdf.output(dest='S').encode('latin1')
+    return bytes(pdf.output())
 
 # --- INTERFACE STREAMLIT ---
 st.title("🧪 Laboratório CDV - Avaliação Datalogger")
